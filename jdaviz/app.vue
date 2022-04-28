@@ -122,6 +122,9 @@
               </v-expansion-panels>
               <v-divider></v-divider>
             </v-card>
+            <span style="position: sticky; max-width: 100%; right: 0; bottom: 0; background-color: white; z-index: 999; padding-top: 4px; border-top: 1px solid #e5e5e5">
+              {{jdaviz_version}}
+            </span>
           </pane>
         </splitpanes>
       </v-container>

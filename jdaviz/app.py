@@ -187,6 +187,7 @@ class Application(VuetifyTemplate, HubListener):
 
     loading = Bool(False).tag(sync=True)
     config = Unicode("").tag(sync=True)
+    jdaviz_version = Unicode("").tag(sync=True)
     vdocs = Unicode("").tag(sync=True)
     popout_button = Any().tag(sync=True, **widget_serialization)
 
@@ -1752,6 +1753,7 @@ class Application(VuetifyTemplate, HubListener):
         self._loaded_configuration = config
         # give the vue templates access to the current config/layout
         self.config = config['settings'].get('configuration', 'unknown')
+        self.jdaviz_version = __version__
         self.vdocs = 'latest' if 'dev' in __version__ else 'v'+__version__
 
         self.state.settings.update(config.get('settings'))
