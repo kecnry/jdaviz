@@ -476,7 +476,9 @@ class SpecvizProfileView(BqplotProfileView, JdavizViewerMixin):
     def set_display_units(self, xunit=None, yunit=None):
         prev_xunit, prev_yunit = self.xunit, self.yunit
         prev_xmin, prev_xmax = self.state.x_min, self.state.x_max
+        prev_xmin_default, prev_xmax_default = self.state.x_min_default, self.state.x_max_default
         prev_ymin, prev_ymax = self.state.y_min, self.state.y_max
+        prev_ymin_default, prev_ymax_default = self.state.y_min_default, self.state.y_max_default
 
         for mark in self.figure.marks:
             if hasattr(mark, 'set_display_units'):
@@ -497,6 +499,12 @@ class SpecvizProfileView(BqplotProfileView, JdavizViewerMixin):
             self.state.x_max = (prev_xmax * prev_xunit).to_value(self.xunit, equivalencies=self._x_equivalencies)
             self.state.y_min = (prev_ymin * prev_yunit).to_value(self.yunit, equivalencies=self._y_equivalencies)
             self.state.y_max = (prev_ymax * prev_yunit).to_value(self.yunit, equivalencies=self._y_equivalencies)
+            # TODO: this won't be able to handle a change to the underlying data itself
+            self.state.x_min_default = (prev_xmin_default * prev_xunit).to_value(self.xunit, equivalencies=self._x_equivalencies)
+            self.state.x_max_default = (prev_xmax_default * prev_xunit).to_value(self.xunit, equivalencies=self._x_equivalencies)
+            self.state.y_min_default = (prev_ymin_default * prev_yunit).to_value(self.yunit, equivalencies=self._y_equivalencies)
+            self.state.y_max_default = (prev_ymax_default * prev_yunit).to_value(self.yunit, equivalencies=self._y_equivalencies)
+
 
         self.set_plot_axes()
 
@@ -506,9 +514,17 @@ class SpecvizProfileView(BqplotProfileView, JdavizViewerMixin):
         if self._xunit is None:
             self._native_xunit = data.spectral_axis.unit
             self._xunit = data.spectral_axis.unit
+            # get native global x limits
+            self.state._reset_x_limits(reset=True)
+            self.state.x_min_default = self.state.x_min
+            self.state.x_max_default = self.state.x_max
         if self._yunit is None:
             self._native_yunit = data.flux.unit
             self._yunit = data.flux.unit
+            # get native global y limits
+            self.state._reset_y_limits(reset=True)
+            self.state.y_min_default = self.state.y_min
+            self.state.y_max_default = self.state.y_max
 
         # Set axes labels for the spectrum viewer
         spectral_axis_unit_type = str(data.spectral_axis.unit.physical_type).title()
