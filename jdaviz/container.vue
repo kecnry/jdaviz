@@ -74,7 +74,7 @@
         </div>
 
         <v-card tile flat style="flex: 1; margin-top: -2px; overflow-y: auto;">
-          <jupyter-widget :widget="viewer.widget" style="width: 100%; height: 100%"></jupyter-widget>
+          <jupyter-widget :widget="viewer.widget" :ref="'viewer-widget-'+index" style="width: 100%; height: 100%"></jupyter-widget>
         </v-card>
     </gl-component>
   </component>
@@ -88,6 +88,18 @@ module.exports = {
     this.$parent.childMe = () => {
       return this.$children[0];
     };
+  },
+  mounted() {
+    // the figure elements probably don't exist yet, so we'll sit in a loop until they do
+    // and set the class to override the cursor.  If this needs to change on the fly, we 
+    // can store a reference to the element here and edit the style/class in a watcher.
+    var existInterval = setInterval(() => {
+     if (this.$refs['viewer-widget-0'] !== undefined && this.$refs['viewer-widget-0'][0].$el !== undefined && this.$refs['viewer-widget-0'][0].$el.firstElementChild !== null && this.$refs['viewer-widget-0'][0].$el.firstElementChild.lastElementChild !== null) {
+        var g = this.$refs['viewer-widget-0'][0].$el.firstElementChild.lastElementChild.firstElementChild.children[2]
+        g.classList.add('custom-cursor')
+        clearInterval(existInterval);
+     }
+    }, 100); 
   },
   methods: {
     computeChildrenPath() {
@@ -110,3 +122,10 @@ module.exports = {
   }
 };
 </script>
+
+<style>
+.custom-cursor {
+  cursor: grab !important;
+}
+
+</style>
