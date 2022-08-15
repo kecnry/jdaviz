@@ -19,6 +19,14 @@
                 persistent-hint
               ></v-switch>
             </v-row>
+            <v-row>
+              <v-switch
+                v-model="setting_track_step"
+                label="Only show visual feedback for current step"
+                hint="Whether to automatically toggle the visibility of the trace, background, and extraction previews based on the currently active interation."
+                persistent-hint
+              ></v-switch>
+            </v-row>
           </v-expansion-panel-content>
         </v-expansion-panel>
       </v-expansion-panels>

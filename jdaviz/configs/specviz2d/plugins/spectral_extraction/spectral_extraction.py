@@ -26,6 +26,7 @@ class SpectralExtraction(PluginTemplateMixin):
 
     active_step = Unicode().tag(sync=True)
     setting_interactive_extract = Bool(True).tag(sync=True)
+    setting_track_step = Bool(True).tag(sync=True)
 
     # TRACE
     trace_dataset_items = List().tag(sync=True)
@@ -200,8 +201,8 @@ class SpectralExtraction(PluginTemplateMixin):
         """
         self.plugin_opened = False
 
-    @observe('plugin_opened', 'setting_interactive_extract')
-    def _update_plugin_marks(self, *args):
+    @observe('plugin_opened', 'setting_interactive_extract', 'setting_track_step')
+    def _update_plugin_marks(self, msg={}):
         if not self._do_marks:
             return
 
@@ -210,10 +211,16 @@ class SpectralExtraction(PluginTemplateMixin):
                 mark.visible = False
             return
 
-        if self.active_step == '':
+        if msg.get('name') == 'setting_track_step' and msg.get('new') is False:
+            self._interaction_in_trace_step()
+            self._interaction_in_bg_step()
+            self._interaction_in_ext_step()
+
+        elif self.active_step == '':
             # on load, default to 'extract' (this will then trigger the observe to update the marks)
             self._interaction_in_ext_step()
             return
+
 
         # update extracted 1d spectrum preview, regardless of the step
         if self.setting_interactive_extract:
@@ -239,9 +246,16 @@ class SpectralExtraction(PluginTemplateMixin):
                                 'extract'],
                          'ext': ['trace',
                                  'ext_upper', 'ext_lower',
-                                 'extract']}
+                                 'extract'],
+                        'all': ['trace',
+                                'bg1_center', 'bg1_lower', 'bg1_upper',
+                                'bg2_center', 'bg2_lower', 'bg2_upper',
+                                'ext_upper', 'ext_lower',
+                                'extract']}
+
+        active_step = self.active_step if self.setting_track_step else 'all'
         for step, mark in self.marks.items():
-            mark.visible = step in display_marks.get(self.active_step, [])
+            mark.visible = step in display_marks.get(active_step, [])
 
     @property
     def marks(self):
@@ -301,7 +315,12 @@ class SpectralExtraction(PluginTemplateMixin):
         else:
             self.marks['trace'].update_xy(range(len(trace.trace)),
                                           trace.trace)
-            self.marks['trace'].line_style = 'solid'
+            if self.setting_track_step:
+                self.marks['trace'].line_style = 'solid'
+
+        if not self.setting_track_step:
+            self._interaction_in_bg_step()
+
         self.active_step = 'trace'
         self._update_plugin_marks()
 
@@ -350,6 +369,9 @@ class SpectralExtraction(PluginTemplateMixin):
             else:
                 for mark in ['bg2_center', 'bg2_lower', 'bg2_upper']:
                     self.marks[mark].clear()
+
+        if not self.setting_track_step:
+            self._interaction_in_ext_step()
 
         self.active_step = 'bg'
         self._update_plugin_marks()
