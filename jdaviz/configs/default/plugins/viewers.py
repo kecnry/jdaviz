@@ -1,6 +1,6 @@
 import numpy as np
 
-from glue.core.subset import RoiSubsetState
+from glue.core.subset import RangeSubsetState, RoiSubsetState
 from glue_jupyter.bqplot.profile import BqplotProfileView
 from glue_jupyter.bqplot.image import BqplotImageView
 from glue_jupyter.table import TableViewer
@@ -87,20 +87,30 @@ class JdavizViewerMixin:
                 if subset.label == layer.layer.label:
                     if isinstance(subset.subset_state, RoiSubsetState):
                         return "mdi-chart-scatter-plot", suffix
-                    else:
+                    elif isinstance(subset.subset_state, RangeSubsetState):
                         return "mdi-chart-bell-curve", ""
             return "", suffix
 
             return '', ''
 
         visible_layers = {}
+        visible_subset_layers = {}
         for layer in self.state.layers[::-1]:
             if layer.visible:
                 prefix_icon, suffix = _get_layer_info(layer)
-                visible_layers[layer.layer.label] = {'color': _get_layer_color(layer),
-                                                     'linewidth': _get_layer_linewidth(layer),
-                                                     'prefix_icon': prefix_icon,
-                                                     'suffix_label': suffix}
+                layer_dict = {'color': _get_layer_color(layer),
+                              'linewidth': _get_layer_linewidth(layer),
+                              'prefix_icon': prefix_icon,
+                              'suffix_label': suffix}
+                is_subset = len(prefix_icon) > 0 or layer.layer.label.startswith("Subset")
+                if not is_subset:
+                    visible_layers[layer.layer.label] = layer_dict
+                else:
+                    visible_subset_layers[layer.layer.label] = layer_dict
+
+        # subsets at end of list
+        for k, v in visible_subset_layers.items():
+            visible_layers[k] = v
 
         viewer_item = self.jdaviz_app._viewer_item_by_id(self.reference_id)
         viewer_item['visible_layers'] = visible_layers
