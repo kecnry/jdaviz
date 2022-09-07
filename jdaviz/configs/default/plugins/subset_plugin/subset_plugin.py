@@ -10,6 +10,7 @@ from traitlets import List, Unicode, Bool, observe
 from jdaviz.core.events import SnackbarMessage
 from jdaviz.core.registries import tray_registry
 from jdaviz.core.template_mixin import PluginTemplateMixin, SubsetSelect
+from jdaviz.core.user_api import PluginUserApi
 
 __all__ = ['SubsetPlugin']
 
@@ -24,6 +25,17 @@ SUBSET_MODES = {
 
 @tray_registry('g-subset-plugin', label="Subset Tools")
 class SubsetPlugin(PluginTemplateMixin):
+    """
+    See the :ref:`Subset Tools Plugin Documentation <imviz-subset-plugin>` for more details.
+
+    Only the following attributes and methods are available through the
+    :ref:`public plugin API <plugin-apis>`:
+
+    * :meth:`~jdaviz.core.template_mixin.PluginTemplateMixin.show`
+    * :meth:`~jdaviz.core.template_mixin.PluginTemplateMixin.open_in_tray`
+    * ``subset`` (:class:`~jdaviz.core.template_mixin.SubsetSelect`):
+      Subset to view/edit or "Create New".
+    """
     template_file = __file__, "subset_plugin.vue"
     select = List([]).tag(sync=True)
     subset_items = List([]).tag(sync=True)
@@ -48,18 +60,22 @@ class SubsetPlugin(PluginTemplateMixin):
         self.session.hub.subscribe(self, SubsetUpdateMessage,
                                    handler=self._on_subset_update)
 
-        self.subset_select = SubsetSelect(self,
-                                          'subset_items',
-                                          'subset_selected',
-                                          default_text="Create New")
+        self.subset = SubsetSelect(self,
+                                   'subset_items',
+                                   'subset_selected',
+                                    default_text="Create New")
+
+    @property
+    def user_api(self):
+        return PluginUserApi(self, expose=('subset',))
 
     def _sync_selected_from_state(self, *args):
-        if not hasattr(self, 'subset_select'):
+        if not hasattr(self, 'subset'):
             # during initial init, this can trigger before the component is initialized
             return
         if self.session.edit_subset_mode.edit_subset == []:
-            if self.subset_selected != self.subset_select.default_text:
-                self.subset_selected = self.subset_select.default_text
+            if self.subset_selected != self.subset.default_text:
+                self.subset_selected = self.subset.default_text
                 self.show_region_info = False
         else:
             new_label = self.session.edit_subset_mode.edit_subset[0].label
@@ -73,14 +89,14 @@ class SubsetPlugin(PluginTemplateMixin):
         self._sync_selected_from_state(*args)
         self._get_subset_definition(*args)
         subset_to_update = self.session.edit_subset_mode.edit_subset[0]
-        self.subset_select._update_subset(subset_to_update, attribute="type")
+        self.subset._update_subset(subset_to_update, attribute="type")
 
     def _sync_available_from_state(self, *args):
-        if not hasattr(self, 'subset_select'):
+        if not hasattr(self, 'subset'):
             # during initial init, this can trigger before the component is initialized
             return
-        self.subset_items = [{'label': self.subset_select.default_text}] + [
-                             self.subset_select._subset_to_dict(subset) for subset in
+        self.subset_items = [{'label': self.subset.default_text}] + [
+                             self.subset._subset_to_dict(subset) for subset in
                              self.data_collection.subset_groups]
 
     @observe('subset_selected')
@@ -89,13 +105,13 @@ class SubsetPlugin(PluginTemplateMixin):
         self.subset_types = []
         self.is_editable = False
 
-        if not hasattr(self, 'subset_select'):
+        if not hasattr(self, 'subset'):
             # during initial init, this can trigger before the component is initialized
             return
 
-        if change['new'] != self.subset_select.default_text:
+        if change['new'] != self.subset.default_text:
             self._get_subset_definition(change['new'])
-        self.show_region_info = change['new'] != self.subset_select.default_text
+        self.show_region_info = change['new'] != self.subset.default_text
         m = [s for s in self.app.data_collection.subset_groups if s.label == change['new']]
         if m != self.session.edit_subset_mode.edit_subset:
             self.session.edit_subset_mode.edit_subset = m
@@ -190,13 +206,13 @@ class SubsetPlugin(PluginTemplateMixin):
         self.subset_definitions = []
         self.subset_types = []
 
-        self._unpack_nested_subset(self.subset_select.selected_subset_state)
+        self._unpack_nested_subset(self.subset.selected_subset_state)
 
     def vue_update_subset(self, *args):
         if not self.is_editable:  # no-op
             return
 
-        subset_state = self.subset_select.selected_subset_state
+        subset_state = self.subset.selected_subset_state
 
         # Composite region cannot be edited, so just grab first element.
         subset_type = self.subset_types[0]
