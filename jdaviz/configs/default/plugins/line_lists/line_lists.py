@@ -22,6 +22,7 @@ from jdaviz.core.marks import SpectralLine
 from jdaviz.core.registries import tray_registry
 from jdaviz.core.template_mixin import PluginTemplateMixin
 from jdaviz.core.tools import ICON_DIR
+from jdaviz.core.user_api import PluginUserApi
 from jdaviz.core.validunits import create_spectral_equivalencies_list
 
 __all__ = ['LineListTool']
@@ -29,6 +30,17 @@ __all__ = ['LineListTool']
 
 @tray_registry('g-line-list', label="Line Lists")
 class LineListTool(PluginTemplateMixin):
+    """
+    See the :ref:`Line Lists Plugin Documentation <line-lists>` for more details.
+
+    Only the following attributes and methods are available through the
+    :ref:`public plugin API <plugin-apis>`:
+
+    * :meth:`~jdaviz.core.template_mixin.PluginTemplateMixin.show`
+    * :meth:`~jdaviz.core.template_mixin.PluginTemplateMixin.open_in_tray`
+    * ``loaded_lists``:
+      Names of lists currently loaded into the plugin for plotting.
+    """
     dialog = Bool(False).tag(sync=True)
     template_file = __file__, "line_lists.vue"
 
@@ -111,6 +123,10 @@ class LineListTool(PluginTemplateMixin):
                                         lambda x_min: self._on_spectrum_viewer_limits_changed())
         self._viewer.state.add_callback("x_max",
                                         lambda x_max: self._on_spectrum_viewer_limits_changed())
+
+    @property
+    def user_api(self):
+        return PluginUserApi(self, expose=('loaded_lists'))
 
     def _on_viewer_data_changed(self, msg=None):
         """
