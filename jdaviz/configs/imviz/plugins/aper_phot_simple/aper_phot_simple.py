@@ -25,13 +25,26 @@ from jdaviz.core.events import SnackbarMessage, LinkUpdatedMessage
 from jdaviz.core.region_translators import regions2aperture
 from jdaviz.core.registries import tray_registry
 from jdaviz.core.template_mixin import PluginTemplateMixin, DatasetSelectMixin, SubsetSelect
+from jdaviz.core.user_api import PluginUserApi
 from jdaviz.utils import bqplot_clear_figure, PRIHDR_KEY
 
 __all__ = ['SimpleAperturePhotometry']
 
 
-@tray_registry('imviz-aper-phot-simple', label="Imviz Simple Aperture Photometry")
+@tray_registry('imviz-aper-phot-simple', label="Simple Aperture Photometry")
 class SimpleAperturePhotometry(PluginTemplateMixin, DatasetSelectMixin):
+    """
+    See the :ref:`Aperture Photometry Plugin Documentation <aper-phot-simple>` for more details.
+
+    Only the following attributes and methods are available through the
+    :ref:`public plugin API <plugin-apis>`:
+
+    * :meth:`~jdaviz.core.template_mixin.PluginTemplateMixin.show`
+    * :meth:`~jdaviz.core.template_mixin.PluginTemplateMixin.open_in_tray`
+    * ``viewer`` (`~jdaviz.core.template_mixing.ViewerSelect`)
+    * ``catalog`` (`~jdaviz.core.template_mixin.SelectPluginComponent`)
+    * :meth:`search`
+    """
     template_file = __file__, "aper_phot_simple.vue"
     subset_items = List([]).tag(sync=True)
     subset_selected = Unicode("").tag(sync=True)
@@ -77,6 +90,14 @@ class SimpleAperturePhotometry(PluginTemplateMixin, DatasetSelectMixin):
 
         self.session.hub.subscribe(self, SubsetUpdateMessage, handler=self._on_subset_update)
         self.session.hub.subscribe(self, LinkUpdatedMessage, handler=self._on_link_update)
+
+    @property
+    def user_api(self):
+        # TODO: refactor to be able to access results from method directly rather than traitlet?
+        return PluginUserApi(self, expose=('dataset', 'subset', 'bg_subset', 'background_value',
+                                           'bg_annulus_inner_r', 'bg_annulus_width', 'pixel_area',
+                                           'counts_factor', 'flux_scaling',
+                                           'results', 'fit_results'))
 
     def reset_results(self):
         self.result_available = False
