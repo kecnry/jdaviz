@@ -1,21 +1,32 @@
 import bqplot
 from ipywidgets import widget_serialization
-from traitlets import Any, Bool, List, Unicode, observe
+from traitlets import Any, Bool, observe
 
 from jdaviz.configs.imviz.helper import get_top_layer_index
-from jdaviz.core.events import ViewerAddedMessage, ViewerRemovedMessage
 from jdaviz.core.registries import tray_registry
-from jdaviz.core.template_mixin import PluginTemplateMixin
+from jdaviz.core.template_mixin import PluginTemplateMixin, ViewerSelectMixin
+from jdaviz.core.user_api import PluginUserApi
 from jdaviz.utils import bqplot_clear_figure
 
 __all__ = ['LineProfileXY']
 
 
-@tray_registry('imviz-line-profile-xy', label="Imviz Line Profiles (XY)")
-class LineProfileXY(PluginTemplateMixin):
+@tray_registry('imviz-line-profile-xy', label="Line Profiles")
+class LineProfileXY(PluginTemplateMixin, ViewerSelectMixin):
+    """
+    See the :ref:`Line Profiles Plugin Documentation <line-profile-xy>` for more details.
+
+    Only the following attributes and methods are available through the
+    :ref:`public plugin API <plugin-apis>`:
+
+    * :meth:`~jdaviz.core.template_mixin.PluginTemplateMixin.show`
+    * :meth:`~jdaviz.core.template_mixin.PluginTemplateMixin.open_in_tray`
+    * ``viewer`` (:class:`~jdaviz.core.template_mixin.ViewerSelect`):
+      Viewer to show line plot from top layer.
+    * ``selected_x``: x-coordinate for line profile
+    * ``selected_y``: y-coordinate for line profile
+    """
     template_file = __file__, "line_profile_xy.vue"
-    viewer_items = List([]).tag(sync=True)
-    selected_viewer = Unicode("").tag(sync=True)
     plot_available = Bool(False).tag(sync=True)
     selected_x = Any('').tag(sync=True)
     selected_y = Any('').tag(sync=True)
@@ -24,20 +35,11 @@ class LineProfileXY(PluginTemplateMixin):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._default_viewer = f'{self.app.config}-0'
-
-        self.hub.subscribe(self, ViewerAddedMessage, handler=self._on_viewers_changed)
-        self.hub.subscribe(self, ViewerRemovedMessage, handler=self._on_viewers_changed)
-
         self._figs = [bqplot.Figure(), bqplot.Figure()]
-        self._on_viewers_changed()  # Populate it on start-up
 
-    def _on_viewers_changed(self, msg=None):
-        self.viewer_items = self.app.get_viewer_ids()
-
-        # Selected viewer was removed but Imviz always has a default viewer to fall back on.
-        if self.selected_viewer not in self.viewer_items:
-            self.selected_viewer = self._default_viewer
+    @property
+    def user_api(self):
+        return PluginUserApi(self, expose=('viewer', 'selected_x', 'selected_y'))
 
     def reset_results(self):
         self.plot_available = False
@@ -47,13 +49,13 @@ class LineProfileXY(PluginTemplateMixin):
             bqplot_clear_figure(fig)
 
     # This is also triggered from viewer code.
-    @observe("selected_viewer")
-    def vue_draw_plot(self, *args, **kwargs):
+    @observe("selected_viewer", "selected_x", "selected_y")
+    def _update_plot(self, *args, **kwargs):
         """Draw line profile plots for given Data across given X and Y indices (0-indexed)."""
-        if not self.selected_x or not self.selected_y or not self.plugin_opened:
+        if not self.selected_x or not self.selected_y:
             return
 
-        viewer = self.app.get_viewer_by_id(self.selected_viewer)
+        viewer = self.app.get_viewer_by_id(self.viewer.selected_id)
         i = get_top_layer_index(viewer)
         data = viewer.state.layers[i].layer
 

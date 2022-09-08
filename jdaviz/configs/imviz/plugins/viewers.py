@@ -169,7 +169,6 @@ class ImvizImageView(BqplotImageView, AstrowidgetsImageViewerMixin, JdavizViewer
                 self.line_profile_xy.selected_x = x
                 self.line_profile_xy.selected_y = y
                 self.line_profile_xy.selected_viewer = self.reference_id
-                self.line_profile_xy.vue_draw_plot()
 
     def blink_once(self, reversed=False):
         # Simple blinking of images - this will make it so that only one
@@ -219,7 +218,6 @@ class ImvizImageView(BqplotImageView, AstrowidgetsImageViewerMixin, JdavizViewer
                     except KeyError:  # pragma: no cover
                         return
                 self.line_profile_xy.selected_viewer = self.reference_id
-                self.line_profile_xy.vue_draw_plot()
 
     def on_limits_change(self, *args):
         try:

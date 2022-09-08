@@ -1,18 +1,17 @@
 <template>
   <j-tray-plugin
-    description='Press l to plot line profiles across X and Y under cursor. You can also manually enter X, Y and then click PLOT.'
+    description='Press l to plot line profiles across X and Y under cursor. You can also manually enter X and Y and the plot will update.'
     :link="'https://jdaviz.readthedocs.io/en/'+vdocs+'/'+config+'/plugins.html#line-profiles'"
     :popout_button="popout_button">
 
-    <v-row>
-      <v-select
-        :items="viewer_items"
-        v-model="selected_viewer"
-        label="Viewer"
-        hint="Select a viewer to plot."
-        persistent-hint
-      ></v-select>
-    </v-row>
+    <plugin-viewer-select
+      :items="viewer_items"
+      :selected.sync="viewer_selected"
+      :multiselect="false"
+      label="Viewer"
+      :show_if_single_entry="false"
+      hint="Select a viewer to plot."
+    />
 
     <v-row no-gutters>
       <v-col>
@@ -34,10 +33,6 @@
           hint="Value of Y"
         ></v-text-field>
       </v-col>
-    </v-row>
-
-    <v-row justify="end">
-      <v-btn color="primary" text @click="draw_plot">Plot</v-btn>
     </v-row>
 
     <v-row v-if="plot_available">

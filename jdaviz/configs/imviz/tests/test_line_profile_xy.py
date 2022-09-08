@@ -19,7 +19,7 @@ class TestLineProfileXY(BaseImviz_WCS_NoWCS):
         # Plot attempt with null X/Y should not crash but also no-op.
         assert not lp_plugin.line_plot_across_x
         assert not lp_plugin.line_plot_across_y
-        lp_plugin.vue_draw_plot()
+        lp_plugin._update_plot()
         assert not lp_plugin.plot_available
 
         # Mimic "l" key pressed.
@@ -52,7 +52,7 @@ class TestLineProfileXY(BaseImviz_WCS_NoWCS):
 
         # Wrong input resets plots without error.
         lp_plugin.selected_x = -1
-        lp_plugin.vue_draw_plot()
+        lp_plugin._update_plot()
         assert not lp_plugin.line_plot_across_x
         assert not lp_plugin.line_plot_across_y
         assert not lp_plugin.plot_available
