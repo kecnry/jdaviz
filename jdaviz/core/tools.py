@@ -252,18 +252,26 @@ class SidebarShortcutCompass(_BaseSidebarShortcut):
 
 
 @viewer_tool
-class SinglePixelRegion(CheckableTool):
+class SinglePixelRegion(BqplotSelectionTool):
 
     icon = os.path.join(ICON_DIR, 'select_single_pixel.svg')
     tool_id = 'jdaviz:singlepixelregion'
     action_text = 'Create single-pixel spatial region'
     tool_tip = 'Define a single-pixel spatial region of interest'
 
+    def __init__(self, viewer, **kwargs):
+        super().__init__(viewer, **kwargs)
+        self.interact = BrushSelector(x_scale=self.viewer.scale_x,
+                                      y_scale=self.viewer.scale_y,
+                                      color=INTERACT_COLOR)
+
     def activate(self):
+        super().activate()
         self.viewer.add_event_callback(self.on_mouse_event, events=['click'])
 
     def deactivate(self):
         self.viewer.remove_event_callback(self.on_mouse_event)
+        super().deactivate()
 
     def on_mouse_event(self, data):
         # Extract data coordinates - these are pixels in the reference image.
