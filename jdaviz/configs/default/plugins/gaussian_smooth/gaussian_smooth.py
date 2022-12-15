@@ -107,9 +107,17 @@ class GaussianSmooth(PluginTemplateMixin, DatasetSelectMixin, AddResultsMixin):
         # NOTE: if this is ever used anywhere else, it should be moved into DatasetSelect
         if self.dataset.selected_dc_item is not None:
             self.selected_data_is_1d = len(self.dataset.selected_dc_item.data.shape) == 1
+            if self.config == 'specviz2d':
+                # 1d vs 2d is triggered based on the selected data rather than mode
+                if self.selected_data_is_1d:
+                    self.add_results.viewer.filters = ['is_spectrum_viewer']
+                else:
+                    self.add_results.viewer.filters = ['is_spectrum_2d_viewer']
 
     @observe("mode_selected")
     def _update_viewer_filters(self, event={}):
+        # mode_selected is only used for cubeviz.  Spatial vs spectral (and the add_results
+        # filters) for specviz2d is handled in _on_data_selected
         if event.get('new', self.mode_selected) == 'Spatial':
             # only want image viewers in the options
             self.add_results.viewer.filters = ['is_image_viewer']
@@ -147,6 +155,11 @@ class GaussianSmooth(PluginTemplateMixin, DatasetSelectMixin, AddResultsMixin):
 
             results = self.spatial_smooth()
 
+        elif self.config == 'specviz2d':
+            if self.selected_data_is_1d:
+                results = self.spectral_smooth()
+            else:
+                results = self.spectral_smooth()
         else:
             results = self.spectral_smooth()
 
