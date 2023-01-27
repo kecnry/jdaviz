@@ -173,6 +173,10 @@ class ApplicationState(State):
         docstring="Nested collection of viewers constructed to support the "
                   "Golden Layout viewer area.")
 
+    plugin_stack_items = ListCallbackProperty(
+        docstring="List of plugin subcomponents to be displayed in the "
+                  "Golden Layout viewer area")
+
 
 class Application(VuetifyTemplate, HubListener):
     """
@@ -1362,6 +1366,9 @@ class Application(VuetifyTemplate, HubListener):
             del self._viewer_store[cid]
 
         self.hub.broadcast(ViewerRemovedMessage(cid, sender=self))
+
+    def vue_destroy_plugin_stack_item(self, index):
+        self.state.plugin_stack_items.pop(index)
 
     def vue_data_item_unload(self, event):
         """

@@ -173,6 +173,7 @@ class PluginTemplateMixin(TemplateMixin):
     plugin_opened = Bool(False).tag(sync=True)
 
     def __init__(self, **kwargs):
+        self._viewer_callbacks = {}
         super().__init__(**kwargs)
         self.app.state.add_callback('tray_items_open', self._mxn_update_plugin_opened)
         self.app.state.add_callback('drawer', self._mxn_update_plugin_opened)
@@ -2158,6 +2159,11 @@ class PluginSubcomponent(VuetifyTemplate):
     def display_name(self):
         return f'{self._plugin._plugin_name}: {self._component_type}'
 
+    def vue_send_to_app(self, data=None, title=None):
+        title = title if title is not None else self.display_name
+        self._plugin.app.state.plugin_stack_items += [(title,
+                                                       'IPY_MODEL_'+self.model_id)]
+
     def vue_popout(self, data=None):
         self.show(loc='popout')
 
@@ -2209,7 +2215,10 @@ class PluginSubcomponent(VuetifyTemplate):
         inline, as only JupyterLab has a mechanism to have multiple tabs.
         """
         title = title if title is not None else self.display_name
-        show_widget(self, loc=loc, title=title)
+        if loc == 'app':
+            self.vue_send_to_app(title=title)
+        else:
+            show_widget(self, loc=loc, title=title)
 
 
 class Table(PluginSubcomponent):
