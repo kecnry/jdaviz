@@ -920,6 +920,12 @@ class SpectralExtraction(PluginTemplateMixin):
         extract = self.export_extract(**kwargs)
         spectrum = extract.spectrum
 
+        # TEMPORARY HACK TO ENSURE INCREASING WAVELENGTH
+        inds = spectrum._spectral_axis.value.argsort()
+        spectrum._spectral_axis = spectrum._spectral_axis[inds]
+        # would need to also flip the pixel component in the resulting data-collection entry
+#        spectrum._data = spectrum._data[inds]
+
         if add_data:
             self.ext_add_results.add_results_from_plugin(spectrum, replace=False)
 
