@@ -224,6 +224,8 @@ class PluginTemplateMixin(TemplateMixin):
     """
     disabled_msg = Unicode("").tag(sync=True)
     plugin_opened = Bool(False).tag(sync=True)
+    has_previews = Bool(False).tag(sync=True)  # whether the plugin has live-preview marks
+    persistent_previews = Bool(False).tag(sync=True)  # show previews even if not opened in tray
 
     def __init__(self, **kwargs):
         self._viewer_callbacks = {}
@@ -236,6 +238,10 @@ class PluginTemplateMixin(TemplateMixin):
         # plugins should override this to pass their own list of expose functionality, which
         # can even be dependent on config, etc.
         return PluginUserApi(self, expose=[])
+
+    @property
+    def show_live_previews(self):
+        return self.plugin_opened or self.persistent_previews
 
     def _viewer_callback(self, viewer, plugin_method):
         """
@@ -320,6 +326,7 @@ class PluginTemplateMixin(TemplateMixin):
         as only JupyterLab has a mechanism to have multiple tabs.
         """
         title = title if title is not None else self._registry_label
+        self.persistent_previews = True
         show_widget(self, loc=loc, title=title)
 
 

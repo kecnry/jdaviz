@@ -2,6 +2,8 @@
   <j-tray-plugin
     description="2D to 1D spectral extraction."
     :link="'https://jdaviz.readthedocs.io/en/'+vdocs+'/'+config+'/plugins.html#spectral-extraction'"
+    :has_previews="has_previews"
+    :persistent_previews.sync="persistent_previews"
     :popout_button="popout_button">
 
     <v-row>

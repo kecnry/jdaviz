@@ -13,6 +13,15 @@
       <span> {{ getDisabledMsg() }}</span>
     </v-row>
     <div v-else>
+      <v-row v-if="has_previews">
+        <v-switch
+          v-model="persistent_previews"
+          @change="$emit('update:persistent_previews', $event)"
+          label="persistent live-preview"
+          hint="show live-preview even when plugin is closed in tray"
+          persistent-hint>
+        </v-switch>
+      </v-row>
       <slot></slot>
     </div>
   </v-container>
@@ -20,7 +29,7 @@
 
 <script>
 module.exports = {
-  props: ['disabled_msg', 'description', 'link', 'popout_button'],
+  props: ['disabled_msg', 'description', 'link', 'popout_button', 'has_previews', 'persistent_previews'],
   methods: {
     isDisabled() {
       return this.getDisabledMsg().length > 0
@@ -28,7 +37,7 @@ module.exports = {
     getDisabledMsg() {
       return this.disabled_msg || ''
     },
-  }
+  },
 };
 </script>
 
