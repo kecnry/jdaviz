@@ -12,6 +12,15 @@
     <v-row v-if="isDisabled()">
       <span> {{ getDisabledMsg() }}</span>
     </v-row>
+    <v-row v-else-if="force_inactive">
+      <v-btn
+       style="width: 100%"
+       text
+       @click="() => this.$emit('reactivate')"
+      >
+       Enable {{name}} Plugin
+      </v-btn>
+    </v-row>
     <div v-else>
       <v-row v-if="uses_active_status">
         <v-switch
@@ -29,8 +38,8 @@
 
 <script>
 module.exports = {
-  props: ['disabled_msg', 'description', 'link', 'popout_button',
-          'uses_active_status', 'plugin_ping', 'keep_active'],
+  props: ['disabled_msg', 'name', 'description', 'link', 'popout_button',
+          'force_inactive', 'uses_active_status', 'plugin_ping', 'keep_active'],
   methods: {
     isDisabled() {
       return this.getDisabledMsg().length > 0
@@ -42,7 +51,9 @@ module.exports = {
       if (!this.$el.isConnected) {
         return
       }
-      this.$emit('update:plugin_ping', Date.now())
+      if (!this.force_inactive) {
+        this.$emit('update:plugin_ping', Date.now())
+      }
       setTimeout(() => {
         this.sendPing()
       }, 200)  // ms

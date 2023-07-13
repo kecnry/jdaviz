@@ -217,8 +217,11 @@ class ApplicationState(State):
     tray_items = ListCallbackProperty(
         docstring="List of plugins displayed in the sidebar tray area.")
 
-    tray_items_open = CallbackProperty(
-        [], docstring="The plugin(s) opened in sidebar tray area.")
+    tray_items_open = ListCallbackProperty(
+        docstring="Index of the plugin(s) opened in sidebar tray area.")
+
+    tray_items_active = ListCallbackProperty(
+        docstring="List of plugins that are currently active (in the sidebar or elsewhere). [READ ONLY]")  # noqa
 
     tray_items_filter = CallbackProperty(
         '', docstring='User-filter on tray items')
@@ -2321,3 +2324,16 @@ class Application(VuetifyTemplate, HubListener):
             raise KeyError(f'{name} not found in app.state.tray_items')
 
         return tray_item
+
+    def vue_deactivate_plugin(self, name):
+        # clicking on the button in the tray to disable keep_active and any existing plugins
+        # (which then will display a reactivate button)
+        tray_item = self.get_tray_item_from_name(name)
+        tray_item.keep_active = False
+        tray_item.force_inactive = True
+        tray_item._set_tray_items_active(active=False)
+
+    def vue_reactivate_plugin(self, name):
+        # opening a tray item should immediately re-enable (without showing the button)
+        tray_item = self.get_tray_item_from_name(name)
+        tray_item.force_inactive = False

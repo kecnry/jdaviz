@@ -1,7 +1,10 @@
 <template>
   <j-tray-plugin
+    name="Line Analysis"
     description="Return statistics for a single spectral line."
     :link="'https://jdaviz.readthedocs.io/en/'+vdocs+'/'+config+'/plugins.html#line-analysis'"
+    @reactivate="reactivate($event)"
+    :force_inactive="force_inactive"
     :uses_active_status="uses_active_status"
     :plugin_ping.sync="plugin_ping"
     :keep_active.sync="keep_active"

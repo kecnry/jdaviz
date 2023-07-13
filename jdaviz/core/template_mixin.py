@@ -223,6 +223,22 @@ class TemplateMixin(VuetifyTemplate, HubListener, ViewerPropertiesMixin):
                                   if k.split(':')[0] != viewer_id}
 
 
+class PopoutButtonWithCallback(PopoutButton):
+    def __init__(self, target, callback=None, **kwargs):
+        self.callback = callback
+        super().__init__(target, **kwargs)
+
+    def open_window(self):
+        if self.callback is not None:
+            self.callback()
+        super().open_window()
+
+    def open_tab(self):
+        if self.callback is not None:
+            self.callback()
+        super().open_tab()
+
+
 class PluginTemplateMixin(TemplateMixin):
     """
     This base class can be inherited by all sidebar/tray plugins to expose common functionality.
@@ -233,11 +249,15 @@ class PluginTemplateMixin(TemplateMixin):
     uses_active_status = Bool(False).tag(sync=True)  # noqa whether the plugin has live-preview marks, set to True in plugins to expose keep_active switch
     keep_active = Bool(False).tag(sync=True)  # noqa whether the live-preview marks show regardless of active state, inapplicable unless uses_active_status is True
     is_active = Bool(False).tag(sync=True)  # noqa read-only: whether the previews should be shown according to plugin_opened and keep_active
+    force_inactive = Bool(False).tag(sync=True)  # whether any open instances should be considered inactive, controlled by app.vue_deactivate_plugin
 
     def __init__(self, **kwargs):
         self._viewer_callbacks = {}
         self._inactive_thread = None  # thread checking for alive pings to control plugin_opened
         super().__init__(**kwargs)
+        self.popout_button = PopoutButtonWithCallback(self,
+                                                      callback=lambda: self._set_tray_items_active(active=True, disable_force_inactive=True),  # noqa
+                                                      window_features='popup,width=400,height=600')
 
     @property
     def user_api(self):
@@ -312,9 +332,30 @@ class PluginTemplateMixin(TemplateMixin):
         if index not in app_state.tray_items_open:
             app_state.tray_items_open = app_state.tray_items_open + [index]
 
+    def _set_tray_items_active(self, active=None, disable_force_inactive=False):
+        if disable_force_inactive:
+            self.force_inactive = False
+        active = active if active is not None else self.is_active
+        if active and self._registry_name not in self.app.state.tray_items_active:
+            self.app.state.tray_items_active = self.app.state.tray_items_active + [self._registry_name]  # noqa
+        if not active and self._registry_name in self.app.state.tray_items_active:
+            self.app.state.tray_items_active = [ti for ti in self.app.state.tray_items_active if ti != self._registry_name]  # noqa
+
+    def vue_reactivate(self, *args):
+        self._set_tray_items_active(active=True, disable_force_inactive=True)
+
     @observe('plugin_opened', 'keep_active')
     def _update_is_active(self, *args):
         self.is_active = self.keep_active or self.plugin_opened
+        if not self.is_active:
+            # setting to open cannot be done here or else the state change causes the tray to be
+            # refreshed before the plugin is fully opened and it can never open.  This is why we
+            # need to handle adding the items via callbacks on the popout_button and overloading
+            # self.show
+            self._set_tray_items_active(False)
+        if self.keep_active and not self.plugin_opened:
+            # then keep_active was toggled from the API so needs to be set in the tray
+            self._set_tray_items_active(True)
 
     @contextmanager
     def as_active(self):
@@ -374,6 +415,7 @@ class PluginTemplateMixin(TemplateMixin):
         """
         title = title if title is not None else self._registry_label
         show_widget(self, loc=loc, title=title)
+        self._set_tray_items_active(active=True, disable_force_inactive=True)
 
 
 class BasePluginComponent(HubListener, ViewerPropertiesMixin):

@@ -114,7 +114,10 @@
               <v-expansion-panels accordion multiple focusable flat tile v-model="state.tray_items_open">
                 <v-expansion-panel v-for="(trayItem, index) in state.tray_items" :key="index">
                   <div v-if="trayItemVisible(trayItem, state.tray_items_filter)">
-                    <v-expansion-panel-header >
+                    <v-expansion-panel-header @click="() => {if (!state.tray_items_open.includes(index)) {reactivate_plugin(trayItem.name)}}">
+                      <j-tooltip v-if="!state.tray_items_open.includes(index) && state.tray_items_active.includes(trayItem.name)" span_style="position: absolute; top: 14px; left: 5px" tooltipcontent="this plugin is being kept active by another instance (popout, inline) and/or the keep_active option, click to deactivate all instances">
+                        <v-icon small style="color: #c75109" @click.native.stop="() => deactivate_plugin(trayItem.name)">mdi-circle-slice-8</v-icon>
+                      </j-tooltip>
                       <j-tooltip :tipid="trayItem.name">
                         {{ trayItem.label }}
                       </j-tooltip>
