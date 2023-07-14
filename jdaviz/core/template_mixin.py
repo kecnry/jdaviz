@@ -136,6 +136,22 @@ class ViewerPropertiesMixin:
         return self.app.get_viewer(viewer_reference)
 
 
+class PopoutButtonWithCallback(PopoutButton):
+    def __init__(self, target, callback=None, **kwargs):
+        self.callback = callback
+        super().__init__(target, **kwargs)
+
+    def open_window(self):
+        if self.callback is not None:
+            self.callback()
+        super().open_window()
+
+    def open_tab(self):
+        if self.callback is not None:
+            self.callback()
+        super().open_tab()
+
+
 class TemplateMixin(VuetifyTemplate, HubListener, ViewerPropertiesMixin):
     config = Unicode("").tag(sync=True)
     vdocs = Unicode("").tag(sync=True)
@@ -165,7 +181,7 @@ class TemplateMixin(VuetifyTemplate, HubListener, ViewerPropertiesMixin):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.popout_button = PopoutButton(self, window_features='popup,width=400,height=600')
+        self.popout_button = PopoutButtonWithCallback(self, window_features='popup,width=400,height=600')
         self._viewer_callbacks = {}
         self.hub.subscribe(self, ViewerRemovedMessage,
                            handler=lambda msg: self._remove_viewer_callbacks(msg.viewer_id))
@@ -222,23 +238,6 @@ class TemplateMixin(VuetifyTemplate, HubListener, ViewerPropertiesMixin):
         self._viewer_callbacks = {k: v for k, v in self._viewer_callbacks.items()
                                   if k.split(':')[0] != viewer_id}
 
-
-class PopoutButtonWithCallback(PopoutButton):
-    def __init__(self, target, callback=None, **kwargs):
-        self.callback = callback
-        super().__init__(target, **kwargs)
-
-    def open_window(self):
-        if self.callback is not None:
-            self.callback()
-        super().open_window()
-
-    def open_tab(self):
-        if self.callback is not None:
-            self.callback()
-        super().open_tab()
-
-
 class PluginTemplateMixin(TemplateMixin):
     """
     This base class can be inherited by all sidebar/tray plugins to expose common functionality.
@@ -255,9 +254,8 @@ class PluginTemplateMixin(TemplateMixin):
         self._viewer_callbacks = {}
         self._inactive_thread = None  # thread checking for alive pings to control plugin_opened
         super().__init__(**kwargs)
-        self.popout_button = PopoutButtonWithCallback(self,
-                                                      callback=lambda: self._set_tray_items_active(active=True, disable_force_inactive=True),  # noqa
-                                                      window_features='popup,width=400,height=600')
+        self.popout_button.callback = lambda: self._set_tray_items_active(active=True,
+                                                                          disable_force_inactive=True)  # noqa
 
     @property
     def user_api(self):
@@ -291,7 +289,7 @@ class PluginTemplateMixin(TemplateMixin):
         expected_delay_ms = 200
         # plugin_ping (ms) set by setTimeout in tray_plugin.vue
         # time.time() is in s, so need to convert to ms
-        while time.time()*1000 - self.plugin_ping < 2 * expected_delay_ms:
+        while time.time()*1000 - self.plugin_ping < 5 * expected_delay_ms:
             # at least one plugin has sent an "alive" ping within twice of the expected
             # interval, wait a full (double) interval and then check again
             time.sleep(2 * expected_delay_ms / 1000)

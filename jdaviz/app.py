@@ -2337,3 +2337,11 @@ class Application(VuetifyTemplate, HubListener):
         # opening a tray item should immediately re-enable (without showing the button)
         tray_item = self.get_tray_item_from_name(name)
         tray_item.force_inactive = False
+
+    def vue_update_tray_item_active(self, name):
+        print("*** vue_update_tray_item_active", name)
+        import time
+        time.sleep(3)
+#        print("*** setting")
+#        tray_item = self.get_tray_item_from_name(name)
+#        tray_item._set_tray_items_active()
