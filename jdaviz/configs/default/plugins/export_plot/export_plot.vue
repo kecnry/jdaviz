@@ -11,6 +11,12 @@
       hint="Select the viewer to export."
     />
 
+    <v-row>
+      <v-btn text @click="window.html2canvas(document.querySelector('.jdaviz')).then(canvas => {document.body.appendChild(canvas)})">
+        screenshot
+      </v-btn>
+    </v-row>
+
     <div v-if="viewer_selected">
       <v-row justify="end" class="row-min-bottom-padding">
         <v-btn
@@ -134,3 +140,15 @@
 
   </j-tray-plugin>
 </template>
+
+<script>
+export default {
+  mounted() {
+    let screenshotScript = document.createElement('script')
+    screenshotScript.setAttribute('src', 'https://cdn.jsdelivr.net/npm/html2canvas@1.0.0-rc.5/dist/html2canvas.min.js')
+    document.head.appendChild(recaptchaScript)
+//      Vue.loadScript('https://cdn.jsdelivr.net/npm/html2canvas@1.0.0-rc.5/dist/html2canvas.min.js')
+      alert('loaded!')
+  }
+};
+</script>
