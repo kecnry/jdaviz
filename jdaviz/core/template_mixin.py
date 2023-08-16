@@ -768,6 +768,8 @@ class FileImportSelectPluginComponent(SelectPluginComponent):
     def __init__(self, plugin, **kwargs):
         """
         """
+        self._cached_file = {}
+
         if "From File..." not in kwargs['manual_options']:
             kwargs['manual_options'] += ['From File...']
 
