@@ -6,7 +6,8 @@ from glue.core.message import DataCollectionAddMessage, DataCollectionDeleteMess
 
 from jdaviz.core.custom_traitlets import FloatHandleEmpty
 from jdaviz.core.events import LinkUpdatedMessage
-from jdaviz.core.marks import FootprintOverlay
+from jdaviz.core.marks import FootprintOverlay, MarkersMark
+from jdaviz.core.region_translators import regions2roi
 from jdaviz.core.registries import tray_registry
 from jdaviz.core.template_mixin import (PluginTemplateMixin, ViewerSelectMixin,
                                         EditableSelectPluginComponent,
@@ -93,12 +94,6 @@ class Footprints(PluginTemplateMixin, ViewerSelectMixin, HasFileImportSelect):
     # TODO: dithering/mosaic options?
 
     def __init__(self, *args, **kwargs):
-        if not preset_regions._has_pysiaf:  # pragma: nocover
-            # NOTE: if we want to keep this as a soft-dependency and implement other
-            # footprint/region options later, we could just disable the JWST presets
-            # instead of the entire plugin
-            self.disabled_msg = 'this plugin requires pysiaf to be installed'
-
         self._ignore_traitlet_change = False
         self._overlays = {}
 
@@ -117,10 +112,15 @@ class Footprints(PluginTemplateMixin, ViewerSelectMixin, HasFileImportSelect):
                                                      on_rename=self._on_overlay_rename,
                                                      on_remove=self._on_overlay_remove)
 
+        if preset_regions._has_pysiaf:
+            preset_options = list(preset_regions._instruments.keys())
+        else:
+            preset_options = []
+        preset_options.append('From File...')
         self.preset = FileImportSelectPluginComponent(self,
                                                       items='preset_items',
                                                       selected='preset_selected',
-                                                      manual_options=list(preset_regions._instruments.keys())+['From File...'])  # noqa
+                                                      manual_options=preset_options)
 
         # set the custom file parser for importing catalogs
         self.preset._file_parser = self._file_parser
@@ -141,7 +141,12 @@ class Footprints(PluginTemplateMixin, ViewerSelectMixin, HasFileImportSelect):
                                                'center_on_viewer', 'ra', 'dec', 'pa',
                                                'v2_offset', 'v3_offset',
                                                'overlay_regions'))
-        return PluginUserApi(self)
+        return PluginUserApi(self, expose=('overlay',
+                                           'rename_overlay', 'add_overlay', 'remove_overlay',
+                                           'viewer', 'visible', 'color', 'fill_opacity',
+                                           'import_region',
+                                           'center_on_viewer',
+                                           'overlay_regions'))
 
     def _get_marks(self, viewer, overlay=None):
         matches = [mark for mark in viewer.figure.marks
@@ -425,7 +430,7 @@ class Footprints(PluginTemplateMixin, ViewerSelectMixin, HasFileImportSelect):
             if 'regions' not in overlay and isinstance(self.preset.selected_obj, regions.Regions):
                 overlay['regions'] = self.preset.selected_obj
             regs = overlay.get('regions', [])
-        elif self.preset_selected in preset_regions._instruments:
+        elif preset_regions._has_pysiaf and self.preset_selected in preset_regions._instruments:
             regs = preset_regions.jwst_footprint(self.preset_selected, **callable_kwargs)
         else:  # pragma: no cover
             regs = []
@@ -458,7 +463,7 @@ class Footprints(PluginTemplateMixin, ViewerSelectMixin, HasFileImportSelect):
             if wcs is None:
                 continue
             existing_overlays = self._get_marks(viewer, self.overlay_selected)
-            regs = [r for r in regs if isinstance(r, regions.PolygonSkyRegion)]
+            regs = [r for r in regs if isinstance(r, regions.Region)]
             update_existing = len(existing_overlays) == len(regs)
             if not update_existing and len(existing_overlays):
                 # clear any existing marks (length has changed, perhaps a new preset)
@@ -469,29 +474,57 @@ class Footprints(PluginTemplateMixin, ViewerSelectMixin, HasFileImportSelect):
             # https://github.com/spacetelescope/jwst_novt/blob/main/jwst_novt/interact/display.py
             new_marks = []
             for i, reg in enumerate(regs):
-                pixel_region = reg.to_pixel(wcs)
-                if not isinstance(reg, regions.PolygonSkyRegion):  # pragma: nocover
+                if not isinstance(reg, regions.Region):  # pragma: nocover
                     # if we ever want to support plotting centers as well,
                     # see jwst_novt/interact/display.py
                     continue
 
-                x_coords = pixel_region.vertices.x
-                y_coords = pixel_region.vertices.y
+                if isinstance(reg, regions.SkyRegion):
+                    pixel_region = reg.to_pixel(wcs)
+                else:
+                    pixel_region = reg
+
+                klass = FootprintOverlay
+                mark_kwargs = {}
+
+                if isinstance(pixel_region, regions.PolygonPixelRegion):
+                    x_coords = pixel_region.vertices.x
+                    y_coords = pixel_region.vertices.y
+
+                # bqplot marker does not respect image pixel sizes, so need to render as polygon.
+                elif isinstance(pixel_region, regions.RectanglePixelRegion):
+                    pixel_region = pixel_region.to_polygon()
+                    x_coords = pixel_region.vertices.x
+                    y_coords = pixel_region.vertices.y
+                elif isinstance(pixel_region, (regions.CirclePixelRegion,
+                                               regions.EllipsePixelRegion,
+                                               regions.CircleAnnulusPixelRegion)):
+                    roi = regions2roi(pixel_region)
+                    x_coords, y_coords = roi.to_polygon()
+
+                elif isinstance(pixel_region, regions.PointPixelRegion):
+                    x_coords = [pixel_region.center.x]
+                    y_coords = [pixel_region.center.y]
+                    klass = MarkersMark
+                    mark_kwargs["marker"] = "plus"
+                else:
+                    continue
+
                 if update_existing:
                     mark = existing_overlays[i]
                     with mark.hold_sync():
                         mark.x = x_coords
                         mark.y = y_coords
                 else:
-                    # instrument aperture regions
-                    mark = FootprintOverlay(
+                    mark = klass(
                         viewer,
                         self.overlay_selected,
                         x=x_coords,
                         y=y_coords,
                         colors=[self.color],
                         fill_opacities=[self.fill_opacity],
-                        visible=visible
+                        visible=visible,
+                        **mark_kwargs
                     )
                     new_marks.append(mark)
 
