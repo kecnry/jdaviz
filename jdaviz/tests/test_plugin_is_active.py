@@ -1,3 +1,4 @@
+import threading
 from traitlets import Bool, Float, observe
 from time import sleep
 
@@ -64,3 +65,47 @@ def test_is_active():
     # but should immediately once it becomes active
     plg.vue_plugin_ping({})
     assert plg._method_ran is True
+
+    # imitate constant pings from the frontend
+    continue_frontend_pings = True
+    ping_delay_factor = 1.0
+
+    def imitate_frontend_pings():
+        while continue_frontend_pings:
+            plg.vue_plugin_ping({})
+            sleep(ping_delay_factor * plg._ping_delay_ms / 1000.)
+        return
+
+    frontend_pings = threading.Thread(target=imitate_frontend_pings)
+    frontend_pings.start()
+    assert plg.is_active is True
+    sleep(1)
+    assert plg.is_active is True
+
+    # regression test for https://github.com/spacetelescope/jdaviz/pull/2450
+    # in cases where the method takes longer than the timeout interval, the plugin should not
+    # immediately be reset to inactive which would result in live-preview mark flickering.
+    plg._method_ran = False
+    plg.sleep_time = 0.1
+    assert plg._method_ran is True
+    plg.sleep_time = 0.2
+    plg.sleep_time = 0.3
+
+    for i in range(15):
+        assert plg.is_active is True
+        sleep(0.1)
+
+    # so what really was the problem, is_active toggling visibility causing delays in the frontend?
+    ping_delay_factor = 5.0
+    sleep(1)
+    assert plg.is_active is True
+
+    ping_delay_factor = 10.0
+    sleep(2)
+    assert plg.is_active is True
+
+    # test that stopping pings will result in deactivating the plugin
+    continue_frontend_pings = False
+    sleep(1)
+    assert plg.is_active is False
+    frontend_pings.join()
