@@ -54,6 +54,7 @@
     <div style="display: grid; position: relative"> <!-- overlay container -->
       <div style="grid-area: 1/1">
         <div v-if="moment_available">
+          <jupyter-widget :widget="file_download"></jupyter-widget>
           <v-row>
               <v-text-field
               v-model="filename"

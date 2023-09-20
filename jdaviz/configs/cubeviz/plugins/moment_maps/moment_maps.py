@@ -4,8 +4,10 @@ from pathlib import Path
 from astropy import units as u
 from astropy.nddata import CCDData
 
-from traitlets import Unicode, Bool, observe
+from traitlets import Any, Unicode, Bool, observe
 from specutils import Spectrum1D, manipulation, analysis
+from ipywidgets.widgets import widget_serialization
+import solara
 
 from jdaviz.core.custom_traitlets import IntHandleEmpty
 from jdaviz.core.events import SnackbarMessage
@@ -49,6 +51,7 @@ class MomentMap(PluginTemplateMixin, DatasetSelectMixin, SpectralSubsetSelectMix
     filename = Unicode().tag(sync=True)
     moment_available = Bool(False).tag(sync=True)
     overwrite_warn = Bool(False).tag(sync=True)
+    file_download = Any().tag(sync=True, **widget_serialization)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -121,6 +124,13 @@ class MomentMap(PluginTemplateMixin, DatasetSelectMixin, SpectralSubsetSelectMix
             self.hub.broadcast(msg)
 
         self.moment_available = True
+
+        def read():
+            import io
+            f = io.BytesIO()
+            self.moment.write(f, format='fits')
+            return f.getvalue()
+        self.file_download = solara.FileDownload.widget(data=read, filename="moment_map.fits", label="Download moment map as fits file")
 
         return self.moment
 
