@@ -33,10 +33,6 @@
       ></v-text-field>
     </v-row>
 
-    <v-row justify="end">
-      <v-btn color="primary" text @click="draw_plot">Plot</v-btn>
-    </v-row>
-
     <v-row v-if="plot_available">
       <jupyter-widget :widget="plot_across_x_widget"/>
       <br/>

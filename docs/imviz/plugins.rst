@@ -153,7 +153,7 @@ Line Profiles
 
 This plugin plots line profiles across X and Y for the pixel under cursor
 when ``l`` key is pressed on the image viewer. You can also manually type in the
-values of X and Y, and then press the :guilabel:`PLOT` button.
+values of X and Y and the plots will automatically update.
 The top visible image, the same one displayed under :ref:`imviz-compass`,
 will be used for these plots.
 

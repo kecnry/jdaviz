@@ -1,7 +1,7 @@
 from traitlets import Bool, Unicode, observe
 
 from jdaviz.configs.imviz.helper import get_top_layer_index
-from jdaviz.core.custom_traitlets import FloatHandleEmpty
+from jdaviz.core.custom_traitlets import IntHandleEmpty
 from jdaviz.core.events import ViewerAddedMessage
 from jdaviz.core.registries import tray_registry
 from jdaviz.core.template_mixin import (PluginTemplateMixin, ViewerSelectMixin, Plot,
@@ -16,8 +16,8 @@ class LineProfileXY(PluginTemplateMixin, ViewerSelectMixin):
     uses_active_status = Bool(True).tag(sync=True)
 
     plot_available = Bool(False).tag(sync=True)
-    selected_x = FloatHandleEmpty('').tag(sync=True)
-    selected_y = FloatHandleEmpty('').tag(sync=True)
+    selected_x = IntHandleEmpty('').tag(sync=True)
+    selected_y = IntHandleEmpty('').tag(sync=True)
 
     plot_across_x_widget = Unicode().tag(sync=True)
     plot_across_y_widget = Unicode().tag(sync=True)
@@ -25,6 +25,7 @@ class LineProfileXY(PluginTemplateMixin, ViewerSelectMixin):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        self._skip_update_plot = False
         self.plot_across_x = Plot(self)
         self.plot_across_y = Plot(self)
         for plot in (self.plot_across_x, self.plot_across_y):
@@ -69,9 +70,10 @@ class LineProfileXY(PluginTemplateMixin, ViewerSelectMixin):
             else:
                 viewer.remove_event_callback(callback)
 
-        # pass along the msg object so that @skip_if_no_updates_since_last_active can be used
-        # to avoid re-drawing if no changes since the last time is_active was set
-        self.vue_draw_plot(msg)
+        if self.is_active:
+            # pass along the msg object so that @skip_if_no_updates_since_last_active can be used
+            # to avoid re-drawing if no changes since the last time is_active was set
+            self._update_plot(msg)
 
     def _on_viewer_key_event(self, viewer, data):
         if data['key'] == 'l':
@@ -81,26 +83,25 @@ class LineProfileXY(PluginTemplateMixin, ViewerSelectMixin):
             if x is None or y is None:  # Out of bounds
                 return
             x, y, _, _ = viewer._get_real_xy(image, x, y)
-            self.selected_x = x
-            self.selected_y = y
+            self._skip_update_plot = True
+            self.selected_x = int(round(x))
+            self.selected_y = int(round(y))
             self.viewer_selected = viewer.reference_id
-            # TODO: remove manual calls to vue_draw_plot and trigger
-            # by changes to selected_x/selected_y as well as viewer_selected
-            self.vue_draw_plot()
+            self._skip_update_plot = False
+            self._update_plot()
 
-    @observe("viewer_selected")
+    @observe("viewer_selected", "selected_x", "selected_y")
     @skip_if_no_updates_since_last_active()  # called with msg passed along from _is_active_changed
-    def vue_draw_plot(self, msg={}):
+    def _update_plot(self, msg={}):
         """Draw line profile plots for given Data across given X and Y indices (0-indexed)."""
-        if not self.selected_x or not self.selected_y:
+        if not self.selected_x or not self.selected_y or self._skip_update_plot:
             return
 
         viewer = self.viewer.selected_obj
         i = get_top_layer_index(viewer)
         data = viewer.state.layers[i].layer
 
-        x = int(round(self.selected_x))
-        y = int(round(self.selected_y))
+        x, y = int(self.selected_x), int(self.selected_y)
 
         nx = data.shape[1]
         ny = data.shape[0]
