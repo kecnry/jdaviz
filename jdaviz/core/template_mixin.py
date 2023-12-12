@@ -1670,9 +1670,15 @@ class SubsetSelect(SelectPluginComponent):
 
     def _is_valid_item(self, subset):
         def is_spectral(subset):
+            if isinstance(subset, dict) and "type" in subset.keys():
+                if subset["type"] == "spectral":
+                    return True
             return get_subset_type(subset) == 'spectral'
 
         def is_spatial(subset):
+            if isinstance(subset, dict) and "type" in subset.keys():
+                if subset["type"] == "spatial":
+                    return True
             return get_subset_type(subset) == 'spatial'
 
         def is_not_composite(subset):
@@ -1704,7 +1710,8 @@ class SubsetSelect(SelectPluginComponent):
         if subset.label not in self.labels:
             # NOTE: this logic will need to be revisited if generic renaming of subsets is added
             # see https://github.com/spacetelescope/jdaviz/pull/1175#discussion_r829372470
-            if subset.label.startswith('Subset') and self._is_valid_item(subset):
+            dc_subset_labels = [sg.label for sg in self.app.data_collection.subset_groups]
+            if subset.label in dc_subset_labels and self._is_valid_item(subset):
                 # NOTE: += will not trigger traitlet update
                 self.items = self.items + [self._subset_to_dict(subset)]  # noqa
 
