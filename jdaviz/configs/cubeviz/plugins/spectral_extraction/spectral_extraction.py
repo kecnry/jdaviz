@@ -52,7 +52,7 @@ class SpectralExtraction(PluginTemplateMixin, ApertureSubsetSelectMixin,
     uses_active_status = Bool(True).tag(sync=True)
 
     # feature flag for cone support
-    dev_cone_support = Bool(False).tag(sync=True)
+    ff_cone_apertures = Bool(False).tag(sync=True)
     wavelength_dependent = Bool(False).tag(sync=True)
     reference_wavelength = FloatHandleEmpty().tag(sync=True)
     slice_wavelength = Float().tag(sync=True)
@@ -108,6 +108,8 @@ class SpectralExtraction(PluginTemplateMixin, ApertureSubsetSelectMixin,
             "Spectral Extraction requires a single dataset to be loaded into Cubeviz, "
             "please load data to enable this plugin."
         )
+
+        self._sync_feature_flag('ff_cone_apertures', 'cone_apertures')
 
     @property
     def user_api(self):

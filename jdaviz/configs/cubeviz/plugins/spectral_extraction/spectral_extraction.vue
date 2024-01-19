@@ -28,7 +28,7 @@
       hint="Select a spatial region to extract its spectrum."
     />
 
-    <div v-if="aperture_selected !== 'Entire Cube' && dev_cone_support">
+    <div v-if="aperture_selected !== 'Entire Cube' && ff_cone_apertures">
       <v-alert type='warning'>cone support is under active development and hidden from users</v-alert>
       <v-row>
         <v-switch

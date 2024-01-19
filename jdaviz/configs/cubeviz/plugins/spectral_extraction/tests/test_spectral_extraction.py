@@ -217,17 +217,17 @@ def test_aperture_markers(cubeviz_helper, spectrum1d_cube):
         assert mark.x[1] == before_x[1]
 
         slice_plg.slice = 0
-        extract_plg._obj.dev_cone_support = True
-        extract_plg._obj.wavelength_dependent = True
-        assert mark.x[1] == before_x[1]
+        with cubeviz_helper.app._ff_temporarily_enabled('cone_apertures'):
+            extract_plg._obj.wavelength_dependent = True
+            assert mark.x[1] == before_x[1]
 
-        slice_plg.slice = 1
-        assert mark.x[1] != before_x[1]
+            slice_plg.slice = 1
+            assert mark.x[1] != before_x[1]
 
-        extract_plg._obj.vue_goto_reference_wavelength()
-        assert slice_plg.slice == 0
+            extract_plg._obj.vue_goto_reference_wavelength()
+            assert slice_plg.slice == 0
 
-        slice_plg.slice = 1
-        extract_plg._obj.vue_adopt_slice_as_reference()
-        extract_plg._obj.vue_goto_reference_wavelength()
-        assert slice_plg.slice == 1
+            slice_plg.slice = 1
+            extract_plg._obj.vue_adopt_slice_as_reference()
+            extract_plg._obj.vue_goto_reference_wavelength()
+            assert slice_plg.slice == 1

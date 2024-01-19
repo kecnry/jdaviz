@@ -268,7 +268,7 @@ class Application(VuetifyTemplate, HubListener):
     # To make a feature public:
     # * search for all instances of the feature label and remove any if-blocks, boolean traitlets
     #   in plugins, and ultimately remove from this dictionary.
-    feature_flags = Dict({}).tag(sync=True)
+    feature_flags = Dict({'cone_apertures': False}).tag(sync=True)
 
     def __init__(self, configuration=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
