@@ -346,6 +346,9 @@ class CoordsInfo(TemplateMixin, DatasetSelectMixin):
             self._dict['value:unit'] = self._dict['axes_y:unit']
             coords_status = False
 
+        else:
+            coords_status = False
+
         if coords_status:
             celestial_coordinates = sky.to_string('hmsdms', precision=4, pad=True).split()
             celestial_coordinates_deg = sky.to_string('decimal', precision=10, pad=True).split()
