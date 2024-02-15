@@ -126,8 +126,9 @@ class Slice(PluginTemplateMixin):
                                            'show_indicator', 'show_wavelength', 'show_value'))
 
     @property
-    def slice_indicator(self):
-        return self.spectrum_viewer.slice_indicator
+    def slice_indicators(self):
+        return [getattr(viewer, 'slice_indicator') for viewer in self._indicator_viewers
+                if hasattr(viewer, 'slice_indicator')]
 
     def _watch_viewer(self, viewer, watch=True):
         if isinstance(viewer, BqplotImageView):
@@ -184,7 +185,8 @@ class Slice(PluginTemplateMixin):
         self._on_slider_updated({'new': self.slice})
 
         # update data held inside slice indicator and force reverting to original active status
-        self.slice_indicator._update_data(x_all)
+        for slice_indicator in self.slice_indicators:
+            slice_indicator._update_data(x_all)
 
     def _viewer_slices_changed(self, value):
         # the slices attribute on the viewer state was changed,
@@ -251,9 +253,8 @@ class Slice(PluginTemplateMixin):
 
         for viewer in self._watched_viewers:
             self._set_viewer_to_slice(viewer, value)
-        for viewer in self._indicator_viewers:
-            if hasattr(viewer, 'slice_indicator'):
-                viewer.slice_indicator.slice = value
+        for slice_indicator in self.slice_indicators:
+            slice_indicator.slice = value
 
         self.hub.broadcast(SliceValueUpdatedMessage(slice=value,
                                                     value=self.value,
