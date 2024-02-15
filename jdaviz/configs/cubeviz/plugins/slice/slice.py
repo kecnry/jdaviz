@@ -90,6 +90,22 @@ class Slice(PluginTemplateMixin):
                                    handler=self._on_global_display_unit_changed)
 
     @property
+    def slice_component_label(self):
+        # label of the component in the cubes corresponding to the slice axis
+        # calling data_collection_item.get_component(slice_component_label) must work
+        return 'Wavelength'
+
+    @property
+    def slice_index(self):
+        # index in viewer.slices corresponding to the slice axis
+        return 2
+
+    @property
+    def slice_axis(self):
+        # global display unit "axis" corresponding to the slice axis
+        return 'spectral'
+
+    @property
     @deprecated(since="3.9", alternative="value")
     def wavelength(self):
         return self.user_api.value
@@ -137,7 +153,8 @@ class Slice(PluginTemplateMixin):
     def _on_data_added(self, msg):
         if isinstance(msg.viewer, BqplotImageView):
             if len(msg.data.shape) == 3:
-                self.max_slice = msg.data.shape[-1] - 1  # Same as i_end in Export Plot plugin
+                # NOTE: same as i_end in Export Plot plugin
+                self.max_slice = msg.data.shape[self.slice_index] - 1
                 self._watch_viewer(msg.viewer, True)
                 self._set_viewer_to_slice(msg.viewer, int(self.slice))
 
@@ -174,8 +191,8 @@ class Slice(PluginTemplateMixin):
         # so we'll update the slider to match which will trigger
         # the slider observer (_on_slider_updated) and sync across
         # any other applicable viewers
-        if len(value) == 3:
-            self.slice = float(value[-1])
+        if len(value) > self.slice_index:
+            self.slice = float(value[self.slice_index])
 
     def _on_select_slice_message(self, msg):
         # NOTE: by setting the slice index, the observer (_on_slider_updated)
@@ -186,10 +203,6 @@ class Slice(PluginTemplateMixin):
                 self.slice = msg.slice
             elif msg.value is not None:
                 self.value = msg.value
-
-    @property
-    def slice_axis(self):
-        return 'spectral'
 
     def _on_global_display_unit_changed(self, msg):
         if msg.axis != self.slice_axis:
@@ -223,7 +236,9 @@ class Slice(PluginTemplateMixin):
         self.session.hub.broadcast(msg)
 
     def _set_viewer_to_slice(self, viewer, value):
-        viewer.state.slices = (0, 0, value)
+        slices = [0, 0, 0]
+        slices[self.slice_index] = value
+        viewer.state.slices = tuple(slices)
 
     @observe('slice')
     def _on_slider_updated(self, event):
