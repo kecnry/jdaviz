@@ -144,8 +144,9 @@ class BaseSpectrumVerticalLine(Lines, PluginMark, HubListener):
 
         # the location of the marker will need to update automatically if the
         # underlying data changes (through a unit conversion, for example)
-        viewer.state.add_callback("reference_data",
-                                  self._update_reference_data)
+        if hasattr(viewer.state, 'reference_data'):
+            viewer.state.add_callback("reference_data",
+                                      self._update_reference_data)
 
         scales = viewer.scales
 
@@ -264,6 +265,12 @@ class SpectralLine(BaseSpectrumVerticalLine):
 class SliceIndicatorMarks(BaseSpectrumVerticalLine, HubListener):
     """Subclass on bqplot Lines to handle slice/wavelength indicator.
     """
+    def _get_slice_axis(self, data):
+        # separated from init so downstream implementations can easily override
+        if hasattr(data, 'spectral_axis'):
+            return data.spectral_axis
+        return [] * u.dimensionless_unscaled
+
     def __init__(self, viewer, slice=0, **kwargs):
         self._viewer = viewer
         self._oob = False  # out-of-bounds, either False, 'left', or 'right'
@@ -273,10 +280,7 @@ class SliceIndicatorMarks(BaseSpectrumVerticalLine, HubListener):
 
         self.slice = slice
         data = viewer.data()[0]
-        if hasattr(data, 'spectral_axis'):
-            x_all = data.spectral_axis
-        else:
-            x_all = []
+        x_all = self._get_slice_axis(data)
         # _update_data will set self._x_all, self._x_unit, self.x
         self._update_data(x_all)
 
@@ -320,6 +324,9 @@ class SliceIndicatorMarks(BaseSpectrumVerticalLine, HubListener):
         padding = padding_fig * x_range
         x_min += padding
         x_max -= padding
+        # ensure y-scale has been set (we'll only be overriding x, but scatter viewers complain
+        # if y-scale is not set)
+        self.scales.setdefault('y', LinearScale(min=0, max=1))
         if x_coord < x_min:
             self.x = [padding_fig, padding_fig]
             self.scales = {**self.scales, 'x': LinearScale(min=0, max=1)}
