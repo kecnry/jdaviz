@@ -40,30 +40,9 @@
     </v-row>
 
     <v-row>
-      <v-slider
-        :value="slice"
-        @input="throttledSetValue"
-        class="align-center"
-        :max="max_slice"
-        :min="min_slice"
-        hide-details
-      />
-    </v-row>
-
-    <v-row>
       <v-text-field
-        v-model.number="slice"
-        class="mt-0 pt-0"
         type="number"
-        label="Slice"
-        hint="Slice number"
-        :suffix="'/'+max_slice"
-      ></v-text-field>
-    </v-row>
-
-    <v-row>
-      <v-text-field
-        v-model="value"
+        v-model.number="value"
         class="mt-0 pt-0"
         :label="value_label"
         :hint="value_label+' corresponding to slice'"
@@ -115,7 +94,7 @@
     created() {
       this.throttledSetValue = _.throttle(
         (v) => { this.slice = v; },
-        this.wait);
+        this.slider_throttle);
     },
   }
 </script>
