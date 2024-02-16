@@ -11,8 +11,10 @@ from glue_jupyter.bqplot.profile import BqplotProfileView
 from traitlets import Any, Bool, Int, Unicode, observe
 from specutils.spectra.spectrum1d import Spectrum1D
 
+from jdaviz.configs.cubeviz.plugins.viewers import CubevizImageView
 from jdaviz.core.events import (AddDataMessage, SliceToolStateMessage,
                                 SliceSelectSliceMessage, SliceValueUpdatedMessage,
+                                NewViewerMessage, ViewerAddedMessage, ViewerRemovedMessage,
                                 GlobalDisplayUnitChanged)
 from jdaviz.core.registries import tray_registry
 from jdaviz.core.template_mixin import PluginTemplateMixin
@@ -42,6 +44,10 @@ class Slice(PluginTemplateMixin):
     * ``show_value``
       Whether to show slice value in label to right of indicator.
     """
+    _cube_viewer_cls = CubevizImageView
+    _cube_viewer_default_label = 'flux-viewer'
+    cube_viewer_exists = Bool(True).tag(sync=True)
+
     template_file = __file__, "slice.vue"
     slice = Any(0).tag(sync=True)
     value = Any(-1).tag(sync=True)
@@ -89,6 +95,10 @@ class Slice(PluginTemplateMixin):
         self.session.hub.subscribe(self, GlobalDisplayUnitChanged,
                                    handler=self._on_global_display_unit_changed)
 
+        self.hub.subscribe(self, ViewerAddedMessage, handler=self._check_if_cube_viewer_exists)
+        self.hub.subscribe(self, ViewerRemovedMessage, handler=self._check_if_cube_viewer_exists)
+        self._check_if_cube_viewer_exists()
+
     @property
     @deprecated(since="3.9", alternative="value")
     def wavelength(self):
@@ -112,6 +122,25 @@ class Slice(PluginTemplateMixin):
     @property
     def slice_indicator(self):
         return self.spectrum_viewer.slice_indicator
+
+    def _check_if_cube_viewer_exists(self, *args):
+        for viewer in self.app._viewer_store.values():
+            if isinstance(viewer, self._cube_viewer_cls):
+                self.cube_viewer_exists = True
+                return
+        self.cube_viewer_exists = False
+
+    def vue_create_cube_viewer(self, *args):
+        self.app._on_new_viewer(NewViewerMessage(self._cube_viewer_cls, data=None, sender=self.app),
+                                vid=self._cube_viewer_default_label,
+                                name=self._cube_viewer_default_label)
+
+        dc = self.app.data_collection
+        for data in dc:
+            if data.ndim == 3:
+                # only load the first cube-like data
+                self.app.set_data_visibility(self._cube_viewer_default_label, data.label, True)
+                break
 
     def _watch_viewer(self, viewer, watch=True):
         if isinstance(viewer, BqplotImageView):

@@ -32,6 +32,12 @@
       </v-expansion-panels>
     </v-row>
 
+    <v-row justify="end">
+      <v-btn color="primary" text v-if="!cube_viewer_exists" @click="create_cube_viewer">
+        Show Cube Viewer
+      </v-btn>
+    </v-row>
+
     <v-row>
       <v-slider
         :value="slice"
