@@ -14,6 +14,14 @@
           <v-expansion-panel-content class="plugin-expansion-panel-content">
             <v-row>
               <v-switch
+                label="Snap to Slice"
+                hint="Snap indicator (and value) to the nearest slice in the cube."
+                v-model="snap_to_slice"
+                persistent-hint>
+              </v-switch>
+            </v-row>
+            <v-row>
+              <v-switch
                 label="Show Indicator"
                 hint="Show slice indicator even when slice tool is inactive."
                 v-model="show_indicator"

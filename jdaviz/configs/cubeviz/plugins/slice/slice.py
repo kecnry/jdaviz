@@ -37,6 +37,8 @@ class Slice(PluginTemplateMixin):
     * ``value``
       Value (wavelength or frequency) of the current slice.  When setting this directly, it will
       update automatically to the value corresponding to the nearest slice.
+    * ``snap_to_slice``
+      Whether the indicator should snap to the value of the nearest slice in the cube.
     * ``show_indicator``
       Whether to show indicator in spectral viewer when slice tool is inactive.
     * ``show_value``
@@ -53,6 +55,7 @@ class Slice(PluginTemplateMixin):
 
     slider_throttle = Int(200).tag(sync=True)  # milliseconds
 
+    snap_to_slice = Bool(True).tag(sync=True)
     show_indicator = Bool(True).tag(sync=True)
     show_value = Bool(True).tag(sync=True)
 
@@ -121,7 +124,8 @@ class Slice(PluginTemplateMixin):
     def user_api(self):
         # NOTE: remove slice, wavelength, show_wavelength after deprecation period
         return PluginUserApi(self, expose=('slice', 'wavelength', 'show_wavelength',
-                                           'value', 'show_indicator', 'show_value'))
+                                           'value',
+                                           'snap_to_slice', 'show_indicator', 'show_value'))
 
     def _check_if_cube_viewer_exists(self, *args):
         for viewer in self.app._viewer_store.values():
@@ -144,9 +148,10 @@ class Slice(PluginTemplateMixin):
 
     def _connect_viewer(self, viewer):
         if isinstance(viewer, WithSliceSelection):
-            viewer.state.add_callback('slices',
-                                      lambda _: self._viewer_slices_changed(viewer))
-            viewer.slice_value = self.value
+            # instead of just setting viewer.slice_value, we'll make sure the "snapping" logic
+            # is updated (if enabled)
+            self._on_value_updated({'new': self.value})
+
         if isinstance(viewer, WithSliceIndicator):
             # NOTE: on first call, this will initialize the indicator itself
             viewer._set_slice_indicator_value(self.value)
@@ -158,13 +163,6 @@ class Slice(PluginTemplateMixin):
 
     def _on_viewer_removed(self, msg):
         self._check_if_cube_viewer_exists()
-
-    def _viewer_slices_changed(self, viewer):
-        # the slices attribute on the viewer state was changed,
-        # so we'll update the slider to match which will trigger
-        # the slider observer (_on_slider_updated) and sync across
-        # any other applicable viewers
-        self.value = viewer.slice_value
 
     def _on_select_slice_message(self, msg):
         # NOTE: by setting the slice index, the observer (_on_slider_updated)
@@ -188,6 +186,16 @@ class Slice(PluginTemplateMixin):
             # TODO: do we need to revert?
             return
 
+        if self.snap_to_slice and len(self.slice_selection_viewers):
+            valid_values = np.concatenate([viewer.slice_values for viewer in self.slice_selection_viewers])
+            if len(valid_values):
+                closest_ind = np.argmin(abs(valid_values - value))
+                closest_value = valid_values[closest_ind]
+                if self.value != closest_value:
+                    self.value = closest_value
+                    # will trigger another call to this method
+                    return
+
         for viewer in self.slice_indicator_viewers:
             viewer._set_slice_indicator_value(value)
         for viewer in self.slice_selection_viewers:
@@ -197,6 +205,11 @@ class Slice(PluginTemplateMixin):
         self.hub.broadcast(SliceValueUpdatedMessage(value=self.value,
                                                     value_unit=self.value_unit,
                                                     sender=self))
+
+    @observe('snap_to_slice')
+    def _on_snap_to_slice_changed(self, event):
+        if self.snap_to_slice:
+            self._on_value_updated({'new': self.value})
 
     @observe('show_indicator', 'show_value')
     def _on_setting_changed(self, event):
