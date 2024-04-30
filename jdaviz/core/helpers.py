@@ -457,7 +457,7 @@ class ConfigHelper(HubListener):
         return self.show(loc="sidecar:tab-after", title=title)
 
     def _get_data(self, data_label=None, spatial_subset=None, spectral_subset=None,
-                  mask_subset=None, function=None, cls=None, use_display_units=False):
+                  mask_subset=None, cls=None, use_display_units=False):
         def _handle_display_units(data, use_display_units):
             if use_display_units:
                 if isinstance(data, Spectrum1D):
@@ -493,12 +493,6 @@ class ConfigHelper(HubListener):
                 else:  # pragma: nocover
                     raise NotImplementedError(f"converting {data.__class__.__name__} to display units is not supported")  # noqa
             return data
-
-        list_of_valid_function_values = ('minimum', 'maximum', 'mean',
-                                         'median', 'sum')
-        if function and function not in list_of_valid_function_values:
-            raise ValueError(f"function {function} not in list of valid"
-                             f" function values {list_of_valid_function_values}")
 
         list_of_valid_subset_names = [x.label for x in self.app.data_collection.subset_groups]
         for subset in (spatial_subset, spectral_subset, mask_subset):
@@ -539,17 +533,13 @@ class ConfigHelper(HubListener):
             elif data.ndim in [1, 3]:
                 cls = Spectrum1D
 
-        object_kwargs = {}
-        if cls == Spectrum1D:
-            object_kwargs['statistic'] = function
-
         if not spatial_subset and not mask_subset:
             if 'Trace' in data.meta:
                 if cls is not None:  # pragma: no cover
                     raise ValueError("cls not supported for Trace object")
                 data = data.get_object()
             else:
-                data = data.get_object(cls=cls, **object_kwargs)
+                data = data.get_object(cls=cls)
 
             return _handle_display_units(data, use_display_units)
 
@@ -575,15 +565,11 @@ class ConfigHelper(HubListener):
                             if sub.data.label == data_label and subsets.label == spatial_subset][0]
             handler, _ = data_translator.get_handler_for(cls)
             try:
-                data = handler.to_object(real_spatial, **object_kwargs)
+                data = handler.to_object(real_spatial)
             except Exception as e:
                 warnings.warn(f"Not able to get {data_label} returned with"
                               f" subset {spatial_subset} applied of type {cls}."
                               f" Exception: {e}")
-        elif function:
-            # This covers the case where cubeviz.get_data is called using a spectral_subset
-            # with function set.
-            data = data.get_object(cls=cls, **object_kwargs)
 
         # Handle spectral subset, including case where spatial subset is also set
         if spectral_subset and not isinstance(all_subsets[spectral_subset],
@@ -597,12 +583,12 @@ class ConfigHelper(HubListener):
 
             handler, _ = data_translator.get_handler_for(cls)
             try:
-                spec_subset = handler.to_object(real_spectral, **object_kwargs)
+                spec_subset = handler.to_object(real_spectral)
             except Exception as e:
                 warnings.warn(f"Not able to get {data_label} returned with"
                               f" subset {mask_subset} applied of type {cls}."
                               f" Exception: {e}")
-            if spatial_subset or function:
+            if spatial_subset:
                 # Return collapsed Spectrum1D object with spectral subset mask applied
                 data.mask = spec_subset.mask
             else:
