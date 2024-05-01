@@ -18,8 +18,8 @@ from jdaviz.utils import standardize_metadata, PRIHDR_KEY
 __all__ = ['parse_data']
 
 EXT_TYPES = dict(flux=['flux', 'sci', 'data'],
-                 uncert=['ivar', 'err', 'var', 'uncert'],
-                 mask=['mask', 'dq', 'quality'])
+                 uncert=['ivar', 'err', 'error', 'var', 'uncert'],
+                 mask=['mask', 'dq', 'quality', 'data_quality'])
 
 
 @data_parser_registry("cubeviz-data-parser")
@@ -214,6 +214,8 @@ def _parse_hdulist(app, hdulist, file_name=None,
         if hdu.data is None or not hdu.is_image or hdu.data.ndim != 3:
             continue
 
+        is_big_cube = hdu.data.size > 8_000_000
+
         data_type = _get_data_type_by_hdu(hdu)
         if not data_type:
             continue
@@ -228,6 +230,8 @@ def _parse_hdulist(app, hdulist, file_name=None,
         if data_type == 'flux':
             wcs = WCS(hdu.header, hdulist)
             wcs_sci = wcs
+        elif is_big_cube:
+            continue
         else:
             wcs = wcs_sci
 
@@ -249,7 +253,11 @@ def _parse_hdulist(app, hdulist, file_name=None,
         if hdu.name != 'PRIMARY' and 'PRIMARY' in hdulist:
             metadata[PRIHDR_KEY] = standardize_metadata(hdulist['PRIMARY'].header)
 
-        sc = _return_spectrum_with_correct_units(flux, wcs, metadata, data_type, hdulist=hdulist)
+        if not is_big_cube:
+            sc = _return_spectrum_with_correct_units(
+                flux, wcs, metadata, data_type, hdulist=hdulist)
+        else:
+            sc = Spectrum1D(flux=flux, wcs=wcs, meta=metadata)
 
         # store original WCS in metadata. this is a hacky workaround for converting subsets
         # to sky regions, where the parent data of the subset might have dropped spatial WCS info
