@@ -132,32 +132,13 @@
 
     <div v-if="image_color_mode_sync.in_subscribed_states">
       <glue-state-sync-wrapper :sync="image_color_mode_sync" :multiselect="viewer_multiselect" @unmix-state="unmix_state('image_color_mode')">
-        <v-select
-          attach
-          :menu-props="{ left: true }"
+        <j-select-descriptions
           :items="image_color_mode_sync.choices"
-          v-model="image_color_mode_value"
+          :selected.sync="image_color_mode_value"
           label="Color Mode"
           hint="Whether each layer gets a single color or colormap."
-          persistent-hint 
-          dense 
-        >
-          <template v-slot:selection="{ item }">
-            <span>
-              {{ item.text }}
-            </span>
-          </template>
-          <template v-slot:item="{ item }">
-            <span>
-              <b>
-                {{ item.text }}
-              </b>
-              <span v-if="item.description" style="opacity: 0.85; font-size: 10pt">
-                | {{ item.description }}
-              </span>
-            </span>
-          </template>
-        </v-select>
+          :dense="true"
+        ></j-select-descriptions>
       </glue-state-sync-wrapper>
     </div>
 
