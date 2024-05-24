@@ -32,6 +32,7 @@
       :items="flag_map_items"
       v-model="flag_map_selected"
       label="Flag definitions"
+      filled
     ></v-select>
     </v-row>
 
@@ -90,6 +91,7 @@
         v-model="flags_filter"
         label="Filter by bits"
         hint="Any flags containing these decomposed bits will be visualized."
+        filled
         persistent-hint
       >
         <template v-slot:item="{active, item, attrs, on}">

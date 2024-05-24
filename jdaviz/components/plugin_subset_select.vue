@@ -14,6 +14,8 @@
       :chips="multiselect"
       item-text="label"
       item-value="label"
+      filled
+      dense
       persistent-hint
     >
       <template slot="selection" slot-scope="data">

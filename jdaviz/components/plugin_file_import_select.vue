@@ -9,6 +9,7 @@
         @change="$emit('update:selected', $event)"
         :label="label"
         :hint="hint"
+        filled
         persistent-hint
       ></v-select>
       <v-chip v-if="selected === 'From File...'"

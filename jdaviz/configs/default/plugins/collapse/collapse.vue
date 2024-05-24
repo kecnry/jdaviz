@@ -21,6 +21,7 @@
         v-model="function_selected"
         label="Function"
         hint="Function to use in the collapse."
+        filled
         persistent-hint
       ></v-select>
     </v-row>

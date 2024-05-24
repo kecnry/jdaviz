@@ -11,7 +11,7 @@
           color="white"
           tile
           icon
-          outlined
+          filled
           :class="{active: data_menu_open}"
           style="height: 42px; width: 42px">
           <v-icon>mdi-format-list-bulleted-square</v-icon>

@@ -140,6 +140,7 @@
           label="Color Mode"
           hint="Whether each layer gets a single color or colormap"
           persistent-hint
+          filled
           dense
         ></v-select>
       </glue-state-sync-wrapper>
@@ -415,6 +416,8 @@
             v-model="marker_colormap_value"
             label="Colormap"
             class="no-hint"
+            dense
+            filled
           ></v-select>
         </glue-state-sync-wrapper>
 
@@ -460,6 +463,7 @@
             v-model="image_colormap_value"
             label="Colormap"
             dense
+            filled
           ></v-select>
               <v-alert v-if="image_colormap_value == 'Random' && (
                   stretch_function_value !== 'linear' || stretch_preset_value !== 100 ||
@@ -533,6 +537,8 @@
           v-model="stretch_function_value"
           label="Stretch Function"
           class="no-hint"
+          filled
+          dense
         ></v-select>
       </glue-state-sync-wrapper>
 
@@ -544,6 +550,8 @@
           v-model="stretch_preset_value"
           label="Stretch Percentile Preset"
           class="no-hint"
+          filled
+          dense
         ></v-select>
       </glue-state-sync-wrapper>
 
@@ -604,13 +612,15 @@
                 <span style="padding: 6px">More Stretch Options</span>
               </v-expansion-panel-header>
               <v-expansion-panel-content class="plugin-expansion-panel-content">
-                <v-row>
+                <v-row style="margin-top: 12px">
                   <v-text-field
                       ref="stretch_hist_nbins"
                       label="Number of Bins"
                       v-model.number="stretch_hist_nbins"
                       type="number"
                       hint="The amount of bins used in the histogram."
+                      filled
+                      dense
                       persistent-hint
                       :rules="[() => stretch_hist_nbins !== '' || 'This field is required',
                                () => stretch_hist_nbins > 0 || 'Number of Bins must be greater than zero']"
@@ -638,6 +648,8 @@
                     v-model.number="stretch_vmin_value"
                     type="number"
                     :step="stretch_vstep"
+                    filled
+                    dense
                   ></v-text-field>
                 </glue-state-sync-wrapper>
                 <glue-state-sync-wrapper :sync="stretch_vmax_sync" :multiselect="layer_multiselect" @unmix-state="unmix_state('stretch_vmax')">
@@ -647,6 +659,8 @@
                     v-model.number="stretch_vmax_value"
                     type="number"
                     :step="stretch_vstep"
+                    filled
+                    dense
                   ></v-text-field>
                 </glue-state-sync-wrapper>
               </v-expansion-panel-content>

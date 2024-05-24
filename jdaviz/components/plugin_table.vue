@@ -8,6 +8,7 @@
           :items="headers_avail"
           @change="$emit('update:headers_visible', $event)"
           label="Columns"
+          filled
           multiple
         >
         <template v-slot:selection="{ item, index }">

@@ -81,6 +81,8 @@
             type="number"
             hint="Background to subtract, same unit as data"
             :disabled="background_selected!='Manual'"
+            filled
+            dense
             persistent-hint
           >
           </v-text-field>
@@ -91,6 +93,8 @@
             v-model="pixel_area_multi_auto"
             label="Auto pixel area"
             :hint="pixel_area_multi_auto ? 'Pixel area will be automatically computed for each selected data entry separately and exposed in the output table.' : 'Pixel area will be held fixed at the value below for each iteration.'"
+            filled
+            dense
             persistent-hint
           />
         </v-row>
@@ -100,6 +104,8 @@
             v-model.number="pixel_area"
             type="number"
             hint="Pixel area in arcsec squared, only used if sr in data unit"
+            filled
+            dense
             persistent-hint
           >
           </v-text-field>
@@ -111,6 +117,8 @@
             v-model.number="counts_factor"
             type="number"
             hint="Factor to convert data unit to counts, in unit of flux/counts"
+            filled
+            dense
             persistent-hint
           >
           </v-text-field>
@@ -121,6 +129,8 @@
             v-model="flux_scaling_multi_auto"
             label="Auto flux scaling"
             :hint="flux_scaling_multi_auto ? 'Flux scaling will be automatically computed for each selected data entry separately and exposed in the output table.' : 'Flux scaling will be held fixed at the value below for each iteration.'"
+            filled
+            dense
             persistent-hint
           />
         </v-row>
@@ -130,6 +140,8 @@
             v-model.number="flux_scaling"
             type="number"
             hint="Same unit as data, used in -2.5 * log(flux / flux_scaling)"
+            filled
+            dense
             persistent-hint
           >
           </v-text-field>
@@ -148,6 +160,8 @@
             v-model="current_plot_type"
             label="Plot Type"
             hint="Aperture photometry plot type"
+            filled
+            dense
             persistent-hint
           ></v-select>
         </v-row>

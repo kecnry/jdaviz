@@ -34,6 +34,7 @@
           label="Format"
           hint="Image format for exporting viewers."
           :disabled="viewer_selected.length == 0"
+          filled
           persistent-hint
         >
         </v-select>
@@ -119,6 +120,7 @@
             label="Format"
             hint="Format for exporting datasets."
             :disabled="dataset_selected.length == 0"
+            filled
             persistent-hint
           >
           </v-select>

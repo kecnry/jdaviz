@@ -194,6 +194,7 @@
             v-model="aperture_method_selected"
             label="Aperture masking method"
             hint="Extract spectrum using an aperture masking method in place of the subset mask."
+            filled
             persistent-hint
             ></v-select>
           <j-docs-link>
@@ -212,6 +213,7 @@
           v-model="function_selected"
           label="Function"
           hint="Function for reducing dimensions of spectral cube."
+          filled
           persistent-hint
         ></v-select>
       </v-row>

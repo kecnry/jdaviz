@@ -13,6 +13,7 @@
       :rules="rules ? rules : []"
       item-text="label"
       item-value="label"
+      filled
       persistent-hint
     >
       <template v-slot:append>

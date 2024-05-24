@@ -22,7 +22,7 @@
             class="my-4"
             autofocus="true"
             dark
-            outlined
+            filled
             label="File Path"
             :hint="hint"
             persistent-hint
