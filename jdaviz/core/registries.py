@@ -106,14 +106,6 @@ class TrayRegistry(UniqueDictRegistry):
     def __call__(self, name=None, label=None, icon=None,
                  viewer_requirements=[], overwrite=False):
         def decorator(cls):
-            # The class must inherit from `VuetifyTemplate` in order to be
-            # ingestible by the component initialization.
-            if not issubclass(cls, VuetifyTemplate):
-                raise ValueError(
-                    f"Unrecognized superclass for {cls.__name__}. All "
-                    f"registered components must inherit from "
-                    f"`ipyvuetify.VuetifyTemplate`.")
-
             self.add(name, cls, label, icon, viewer_requirements, overwrite)
             return cls
         return decorator

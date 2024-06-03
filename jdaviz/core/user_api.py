@@ -129,7 +129,7 @@ class PluginUserApi(UserApiWrapper):
     """
     def __init__(self, plugin, expose=[], readonly=[], excl_from_dict=[]):
         expose = list(set(list(expose) + ['open_in_tray', 'close_in_tray', 'show']))
-        if plugin.uses_active_status:
+        if getattr(plugin, 'uses_active_status', False):
             expose += ['keep_active', 'as_active']
         self._deprecation_msg = None
         super().__init__(plugin, expose, readonly, excl_from_dict)

@@ -2732,7 +2732,7 @@ class Application(VuetifyTemplate, HubListener):
             self.state.tray_items.append({
                 'name': name,
                 'label': tray_item_label,
-                'is_relevant': len(tray_item_instance.irrelevant_msg) == 0,
+                'is_relevant': len(getattr(tray_item_instance, 'irrelevant_msg', '')) == 0,
                 'widget': "IPY_MODEL_" + tray_item_instance.model_id
             })
 
