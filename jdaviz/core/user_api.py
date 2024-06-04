@@ -1,4 +1,5 @@
 import logging
+import solara
 import astropy.units as u
 
 __all__ = ['UserApiWrapper', 'PluginUserApi', 'ViewerUserApi']
@@ -35,6 +36,9 @@ class UserApiWrapper:
             return super().__getattribute__(attr)
 
         exp_obj = getattr(self._obj, attr)
+        if isinstance(exp_obj, solara.Reactive):
+            return exp_obj.value
+
         return getattr(exp_obj, 'user_api', exp_obj)
 
     def __setattr__(self, attr, value):
@@ -80,6 +84,9 @@ class UserApiWrapper:
                 text_to_value = {choice['text']: choice['value']
                                  for choice in exp_obj.sync.get('choices', [])}
                 exp_obj.value = text_to_value.get(value, value)
+            return
+        elif isinstance(exp_obj, solara.Reactive):
+            exp_obj.value = value
             return
 
         return setattr(self._obj, attr, value)
