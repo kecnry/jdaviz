@@ -131,15 +131,7 @@ class ConfigHelper(HubListener):
         plugins : dict
             dict of plugin objects
         """
-        def get_user_api_object(item):
-            if 'Solara' in item['label']:
-                from jdaviz.core.registries import tray_registry
-                tray = tray_registry.members.get(item['name'])
-                return tray.get('cls')(app=self, tray_instance=True).user_api
-            else:
-                return widget_serialization['from_json'](item['widget'], None).user_api
-        plugins = {item['label']: get_user_api_object(item)
-                   for item in self.app.state.tray_items if item['is_relevant']}
+        plugins = self.app._plugins
 
         # handle renamed plugins during deprecation
         if 'Orientation' in plugins:

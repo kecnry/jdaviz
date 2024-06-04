@@ -328,6 +328,7 @@ class Application(VuetifyTemplate, HubListener):
         self._jdaviz_helper = None
         self._verbosity = 'warning'
         self._history_verbosity = 'info'
+        self._plugins = {}
         self.popout_button = PopoutButton(self)
         self.style_registry_instance = style_registry.get_style_registry()
 
@@ -2728,13 +2729,16 @@ class Application(VuetifyTemplate, HubListener):
             # plugin itself
             tray_item_label = tray.get('label')
 
+            widget = getattr(tray_item_instance, '_widget', tray_item_instance)
+
             # NOTE: is_relevant is later updated by observing irrelevant_msg traitlet
             self.state.tray_items.append({
                 'name': name,
                 'label': tray_item_label,
                 'is_relevant': len(getattr(tray_item_instance, 'irrelevant_msg', '')) == 0,
-                'widget': "IPY_MODEL_" + tray_item_instance.model_id
+                'widget': "IPY_MODEL_" + widget.model_id
             })
+            self._plugins[tray_item_label] = getattr(tray_item_instance, 'user_api', tray_item_instance)
 
     def _reset_state(self):
         """ Resets the application state """
