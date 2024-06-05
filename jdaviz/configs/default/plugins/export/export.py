@@ -1,7 +1,8 @@
+import io
 import os
 import time
 from pathlib import Path
-from traitlets import Bool, List, Unicode, observe
+from traitlets import Any, Bool, List, Unicode, observe
 from glue_jupyter.bqplot.image import BqplotImageView
 
 from jdaviz.core.custom_traitlets import FloatHandleEmpty, IntHandleEmpty
@@ -13,6 +14,8 @@ from jdaviz.core.template_mixin import (PluginTemplateMixin, SelectPluginCompone
                                         PluginPlotSelectMixin, AutoTextField,
                                         MultiselectMixin, with_spinner)
 from glue.core.message import SubsetCreateMessage, SubsetDeleteMessage, SubsetUpdateMessage
+from ipywidgets.widgets import widget_serialization
+import solara
 
 from jdaviz.core.events import AddDataMessage, SnackbarMessage
 from jdaviz.core.user_api import PluginUserApi
@@ -98,6 +101,8 @@ class Export(PluginTemplateMixin, ViewerSelectMixin, SubsetSelectMixin,
 
     overwrite_warn = Bool(False).tag(sync=True)
 
+    file_download = Any().tag(sync=True, **widget_serialization)
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -105,6 +110,10 @@ class Export(PluginTemplateMixin, ViewerSelectMixin, SubsetSelectMixin,
                                       'filename_default',
                                       'filename_auto',
                                       'filename_invalid_msg')
+        self.file_download = solara.FileDownload.widget(data=self.export_to_buffer,
+                                                        filename=self.filename.value,
+                                                        label="Export")
+
 
         # NOTE: if adding export support for non-plugin products, also update the language
         # in the UI as well as in _set_dataset_not_supported_msg
@@ -258,6 +267,9 @@ class Export(PluginTemplateMixin, ViewerSelectMixin, SubsetSelectMixin,
     def _is_filename_changed(self, event):
         # Clear overwrite warning when user changes filename
         self.overwrite_warn = False
+        # Change default filename of solara's file download widget
+        if hasattr(self.file_download, 'filename'):
+            self.file_download.filename = self.filename_value
 
     def _update_subset_format_disabled(self):
         new_items = []
@@ -334,6 +346,8 @@ class Export(PluginTemplateMixin, ViewerSelectMixin, SubsetSelectMixin,
             self.data_invalid_msg = ''
 
     def _normalize_filename(self, filename=None, filetype=None, overwrite=False):
+        if isinstance(filename, io.BytesIO):
+            return filename
         # Make sure filename is valid and file does not end up in weird places in standalone mode.
         if not filename:
             raise ValueError("Invalid filename")
@@ -355,6 +369,11 @@ class Export(PluginTemplateMixin, ViewerSelectMixin, SubsetSelectMixin,
             self.overwrite_warn = False
 
         return str(filename)
+
+    def export_to_buffer(self):
+        f = io.BytesIO()  # TODO: can we reuse this or should we close/clear it?
+        self.export(filename=f, show_dialog=False)
+        return f.getvalue()
 
     @with_spinner()
     def export(self, filename=None, show_dialog=None, overwrite=False,
@@ -478,22 +497,22 @@ class Export(PluginTemplateMixin, ViewerSelectMixin, SubsetSelectMixin,
                 if raise_error_for_overwrite:
                     raise FileExistsError(f"{filename} exists but overwrite=False")
                 return
-            self.dataset.selected_obj.write(Path(filename), overwrite=True)
+            self.dataset.selected_obj.write(Path(filename) if isinstance(filename, str) else filename, overwrite=True, format=filetype)
         else:
             raise ValueError("nothing selected for export")
 
         return filename
 
-    def vue_export_from_ui(self, *args, **kwargs):
-        try:
-            filename = self.export(show_dialog=True, raise_error_for_overwrite=False)
-        except Exception as e:
-            self.hub.broadcast(SnackbarMessage(
-                f"Export failed with: {e}", sender=self, color="error"))
-        else:
-            if filename is not None:
-                self.hub.broadcast(SnackbarMessage(
-                    f"Exported to {filename}", sender=self, color="success"))
+    # def vue_export_from_ui(self, *args, **kwargs):
+    #     try:
+    #         filename = self.export(show_dialog=True, raise_error_for_overwrite=False)
+    #     except Exception as e:
+    #         self.hub.broadcast(SnackbarMessage(
+    #             f"Export failed with: {e}", sender=self, color="error"))
+    #     else:
+    #         if filename is not None:
+    #             self.hub.broadcast(SnackbarMessage(
+    #                 f"Exported to {filename}", sender=self, color="success"))
 
     def vue_overwrite_from_ui(self, *args, **kwargs):
         """Attempt to force writing the output if the user confirms the desire to overwrite."""
@@ -511,8 +530,8 @@ class Export(PluginTemplateMixin, ViewerSelectMixin, SubsetSelectMixin,
     def save_figure(self, viewer, filename=None, filetype="png", show_dialog=False):
 
         if filetype == "png":
-            if filename is None or show_dialog:
-                viewer.figure.save_png(str(filename) if filename is not None else None)
+            if filename is None or isinstance(filename, io.BytesIO) or show_dialog:
+                viewer.figure.save_png(str(filename) if isinstance(filename, Path) else filename)
             else:
                 # support writing without save dialog
                 # https://github.com/bqplot/bqplot/pull/1397
@@ -536,7 +555,7 @@ class Export(PluginTemplateMixin, ViewerSelectMixin, SubsetSelectMixin,
                 viewer.figure.get_png_data(on_img_received)
 
         elif filetype == "svg":
-            viewer.figure.save_svg(str(filename) if filename is not None else None)
+            viewer.figure.save_svg(str(filename) if isinstance(filename, Path) else filename)
 
     @with_spinner('movie_recording')
     def _save_movie(self, viewer, i_start, i_end, fps, filename, rm_temp_files):

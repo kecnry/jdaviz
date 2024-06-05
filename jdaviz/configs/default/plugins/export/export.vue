@@ -223,41 +223,38 @@
     </div>
 
     <div style="display: grid; position: relative"> <!-- overlay container -->
-    <div style="grid-area: 1/1">
+      <div style="grid-area: 1/1">
 
-    <plugin-auto-label
-      :value.sync="filename_value"
-      :default="filename_default"
-      :auto.sync="filename_auto"
-      :invalid_msg="filename_invalid_msg"
-      label="Filename"
-      hint="Export to a file on disk"
-    ></plugin-auto-label>
+      <plugin-auto-label
+        :value.sync="filename_value"
+        :default="filename_default"
+        :auto.sync="filename_auto"
+        :invalid_msg="filename_invalid_msg"
+        label="Filename"
+        hint="Export to a file on disk"
+      ></plugin-auto-label>
 
-    <v-row justify="end">
-      <j-tooltip v-if="movie_recording" tooltipcontent="Interrupt recording and delete movie file">
-          <plugin-action-button
-             :results_isolated_to_plugin="true"
-             @click="interrupt_recording"
-             :disabled="!movie_recording"
-          >
-            <v-icon>stop</v-icon>
-          </plugin-action-button>
-      </j-tooltip>
+      <v-row justify="end">
+        <j-tooltip v-if="movie_recording" tooltipcontent="Interrupt recording and delete movie file">
+            <plugin-action-button
+              :results_isolated_to_plugin="true"
+              @click="interrupt_recording"
+              :disabled="!movie_recording"
+            >
+              <v-icon>stop</v-icon>
+            </plugin-action-button>
+        </j-tooltip>
 
-      <plugin-action-button
-        :results_isolated_to_plugin="true"
-        @click="export_from_ui"
-        :spinner="spinner"
-        :disabled="filename_value.length === 0 ||
-                   movie_recording ||
-                   subset_invalid_msg.length > 0 || data_invalid_msg.length > 0 ||
-                   viewer_invalid_msg.length > 0 ||
-                   (viewer_selected.length > 0 && viewer_format_selected == 'mp4' && !movie_enabled)"
-      >
-        Export
-      </plugin-action-button>
-    </div>
+        <jupyter-widget
+          :widget="file_download"
+          :disabled="filename_value.length === 0 ||
+                    movie_recording ||
+                    subset_invalid_msg.length > 0 || data_invalid_msg.length > 0 ||
+                    viewer_invalid_msg.length > 0 ||
+                    (viewer_selected.length > 0 && viewer_format_selected == 'mp4' && !movie_enabled)"
+        ></jupyter-widget>
+
+      </div>
 
       <v-overlay
         absolute
