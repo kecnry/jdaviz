@@ -1141,20 +1141,25 @@ class HasFileImportSelect(VuetifyTemplate, HubListener):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # imported here to avoid circular import
-        from jdaviz.configs.default.plugins.data_tools.file_chooser import FileChooser
-
-        start_path = os.environ.get('JDAVIZ_START_DIR', os.path.curdir)
-        self._file_chooser = FileChooser(start_path)
-        self.components = {'g-file-import': self._file_chooser}
+        self.components = self._file_chooser_components
 
     def vue_file_import_accept(self, *args, **kwargs):
-        self.from_file = self._file_chooser.file_path
+        self.from_file = str(self._file_chooser._file_upload.file_path)
 
     def vue_file_import_cancel(self, *args, **kwargs):
-        self._file_chooser._select_component.select_previous()
         self.from_file = ''
 
+    @property
+    def _file_chooser(self):
+        if 'g-data-tools' in self.app._application_handler._tools:
+            return self.app._application_handler._tools['g-data-tools']
+        return None
+
+    @property
+    def _file_chooser_components(self):
+        if self._file_chooser is not None:
+            return self._file_chooser.components
+        return None
 
 class EditableSelectPluginComponent(SelectPluginComponent):
     """
