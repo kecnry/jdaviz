@@ -34,7 +34,7 @@ def Page():
 
     if not len(data_list):
         from jdaviz.core.launcher import Launcher
-        launcher = Launcher(height='100%', filepath=(data_list[0] if len(data_list) == 1 else ''))
+        launcher = Launcher(height='100vh', filepath=(data_list[0] if len(data_list) == 1 else ''))
         solara.display(launcher.main_with_launcher)
         return
 
