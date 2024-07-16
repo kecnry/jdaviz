@@ -112,6 +112,11 @@ class PluginMark:
             if self.viewer.default_class is Spectrum1D:
                 spec = self.viewer.state.reference_data.get_object(cls=Spectrum1D)
                 eqv = u.spectral_density(spec.spectral_axis)
+                if '_pixel_scale_factor' in spec.meta:
+                    eqv = [(u.MJy / u.sr,
+                            u.MJy,
+                            lambda x: (x * np.asarray(spec.meta.get('_pixel_scale_factor', 1))),
+                            lambda x: x)]
                 y = (self.y * self.yunit).to_value(unit, equivalencies=eqv)
             else:
                 y = (self.y * self.yunit).to_value(unit)
