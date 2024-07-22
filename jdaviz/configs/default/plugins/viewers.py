@@ -173,6 +173,16 @@ class JdavizViewerMixin(WithCache):
         # default visibility based on the visibility of the "parent" data layer
         layer_state.visible = self._get_layer(layer_state.layer.data.label).visible
 
+    def _layer_included_in_legend(self, layer, subset_type):
+        if self.__class__.__name__ == 'CubevizProfileView' and subset_type == 'spatial':
+            # do not show spatial subsets in spectral-viewer
+            return False
+
+        if hasattr(layer.layer, 'meta') and layer.layer.meta.get(_wcs_only_label, False):
+            # do not show wcs-only layer
+            return False
+        return True
+
     def _update_layer_icons(self):
         # update visible_layers (TODO: move this somewhere that can update on color change, etc)
         def _get_layer_color(layer):
@@ -208,14 +218,9 @@ class JdavizViewerMixin(WithCache):
 
         visible_layers = {}
         for layer in self.state.layers[::-1]:
-            layer_is_wcs_only = (
-                    hasattr(layer.layer, 'meta') and
-                    layer.layer.meta.get(_wcs_only_label, False)
-            )
-            if layer.visible and not layer_is_wcs_only:
+            if layer.visible:
                 prefix_icon, subset_type = _get_layer_info(layer)
-                if self.__class__.__name__ == 'CubevizProfileView' and subset_type == 'spatial':
-                    # do not show spatial subsets in spectral-viewer
+                if not self._layer_included_in_legend(layer, subset_type):
                     continue
                 visible_layers[layer.layer.label] = {'color': _get_layer_color(layer),
                                                      'linewidth': _get_layer_linewidth(layer),
