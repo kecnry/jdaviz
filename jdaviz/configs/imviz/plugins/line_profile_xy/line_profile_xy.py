@@ -41,6 +41,31 @@ class LineProfileXY(PluginTemplateMixin, ViewerSelectMixin):
 
         self.hub.subscribe(self, ViewerAddedMessage, handler=self._on_viewer_added)
 
+    def _get_mark(self, viewer):
+        matches = [mark for mark in viewer.figure.marks if isinstance(mark, MarkersMark)]
+        if len(matches):
+            return matches[0]
+        mark = MarkersMark(viewer)
+        viewer.figure.marks = viewer.figure.marks + [mark]
+        return mark
+
+    @property
+    def marks(self):
+        return {viewer_id: self._get_mark(viewer)
+                for viewer_id, viewer in self.app._viewer_store.items()
+                if hasattr(viewer, 'figure')}
+
+    @observe('viewer_items')
+    def _update_mark_visibilities(self, *args):
+        # also called by _is_active_changed
+        if not len(self.viewer.choices):
+            # no valid viewers to show previews
+            return
+
+        for viewer_marks in self.marks.items():
+            for mark in marks:
+                mark.visible = self.is_active
+
     def reset_results(self):
         self.plot_available = False
         self.plot_across_x.update_style('line', visible=False)
@@ -59,6 +84,8 @@ class LineProfileXY(PluginTemplateMixin, ViewerSelectMixin):
 
     @observe('is_active')
     def _is_active_changed(self, msg):
+        self._update_mark_visibilities()
+
         # subscribe/unsubscribe to keypress events across all viewers
         for viewer in self.app._viewer_store.values():
             if not hasattr(viewer, 'figure'):
