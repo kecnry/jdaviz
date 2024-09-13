@@ -24,7 +24,7 @@ def test_cubeviz_aperphot_cube_orig_flux(cubeviz_helper, image_cube_hdu_obj_micr
 
     plg.dataset_selected = "test[FLUX]"
     plg.aperture_selected = "Subset 1"
-    plg.vue_do_aper_phot()
+    plg.calculate_photometry(add_to_table=True, update_plots=True)
     row = cubeviz_helper.get_aperture_photometry_results()[0]
 
     # Basically, we should recover the input rectangle here.
@@ -41,7 +41,7 @@ def test_cubeviz_aperphot_cube_orig_flux(cubeviz_helper, image_cube_hdu_obj_micr
     # Move slider and make sure it recomputes for a new slice automatically.
     cube_slice_plg = cubeviz_helper.plugins["Slice"]._obj
     cube_slice_plg.vue_goto_first()
-    plg.vue_do_aper_phot()
+    plg.calculate_photometry(add_to_table=True, update_plots=True)
     row = cubeviz_helper.get_aperture_photometry_results()[1]
 
     # Same rectangle but different slice value.
@@ -66,7 +66,7 @@ def test_cubeviz_aperphot_cube_orig_flux(cubeviz_helper, image_cube_hdu_obj_micr
     plg = cubeviz_helper.plugins["Aperture Photometry"]._obj
     plg.dataset_selected = "test[FLUX] collapsed"
     plg.aperture_selected = "Subset 1"
-    plg.vue_do_aper_phot()
+    plg.calculate_photometry(add_to_table=True, update_plots=True)
     row = cubeviz_helper.get_aperture_photometry_results()[2]
 
     # Basically, we should recover the input rectangle here.
