@@ -212,10 +212,11 @@
             :hint="'Extract '+resulting_product_name+' using an aperture masking method in place of the subset mask.'"
             persistent-hint
             ></v-select>
+        </v-row>
+        <v-row>
           <j-docs-link>
             See the <j-external-link link='https://photutils.readthedocs.io/en/stable/aperture.html#aperture-and-pixel-overlap'
-            linktext='photutils docs'></j-external-link>
-            for more details on aperture masking methods.
+            linktext='photutils docs'></j-external-link> for more details on aperture masking methods.
           </j-docs-link>
         </v-row>
       </div>
