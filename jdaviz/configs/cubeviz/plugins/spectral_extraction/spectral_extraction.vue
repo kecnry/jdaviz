@@ -220,7 +220,7 @@
         </v-row>
       </div>
 
-      <v-row>
+      <v-row v-if="function_items.length > 1">
         <v-select
           attach
           :items="function_items.map(i => i.label)"
