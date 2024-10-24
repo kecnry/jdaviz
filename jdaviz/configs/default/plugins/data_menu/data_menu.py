@@ -150,3 +150,14 @@ class DataMenu(TemplateMixin, LayerSelectMixin):
 
     def vue_set_layer_visibility(self, info, *args):
         return self.set_layer_visibility(info.get('layer'), info.get('value'))
+
+    def vue_view_metadata(self, *args):
+        # view metadata for the selected layer (UI only shows if a single selection AND data entry)
+        mp = self._viewer.jdaviz_helper.plugins.get('Metadata', None)
+        if mp is None:
+            return
+        try:
+            mp.dataset.selected = self.layer.selected[0]
+        except ValueError:
+            return
+        mp.open_in_tray()

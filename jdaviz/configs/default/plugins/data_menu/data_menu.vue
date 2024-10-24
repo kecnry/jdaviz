@@ -145,7 +145,7 @@
             >
               <v-btn
                 icon
-                disabled
+                @click="view_metadata"
                 >
                 <v-icon>mdi-label</v-icon>
               </v-btn>
