@@ -78,8 +78,12 @@
   .viewer-label-container {
     position: absolute;
     right: 0;
+    height: 100% !important;
+    /*min-width: 30px;*/
+    min-width: 100%;
     z-index: 1;
-    width: 24px;
+    overflow-y: scroll;
+    overflow-x: visible;
   }
   .imviz div.v-card.v-card--flat.v-sheet.v-sheet--tile {
     /* black background beyond edges of canvas for canvas rotation */

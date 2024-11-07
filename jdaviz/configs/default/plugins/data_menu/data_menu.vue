@@ -8,7 +8,7 @@
       :close-on-content-click="false"
       v-model="data_menu_open">
       <template v-slot:activator="{ on, attrs }">
-        <div :id="'layer-legend-'+ viewer_id">
+        <div :id="'layer-legend-'+ viewer_id" class="layer-legend">
           <div v-if="Object.keys(viewer_icons).length > 1 || Object.keys(visible_layers).length == 0 || data_menu_open" class="viewer-label"> 
             <span style="float: right;">
               <j-layer-viewer-icon-stylized
@@ -217,6 +217,12 @@
 </script>
 
 <style scoped>
+  .layer-legend {
+    overflow-y: scroll;
+    height: 100% !important;
+    min-width: 30px;
+    overflow-x: visible;
+  }
   .viewer-label {
     display: block;
     float: right;
