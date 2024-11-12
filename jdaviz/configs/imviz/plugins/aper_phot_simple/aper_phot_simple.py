@@ -12,6 +12,7 @@ from glue.core.message import SubsetUpdateMessage
 from ipywidgets import widget_serialization
 from photutils.aperture import (ApertureStats, CircularAperture, EllipticalAperture,
                                 RectangularAperture)
+from regions import CirclePixelRegion, PixCoord
 from traitlets import Any, Bool, Integer, List, Unicode, observe
 
 from jdaviz.core.custom_traitlets import FloatHandleEmpty
@@ -48,6 +49,9 @@ class SimpleAperturePhotometry(PluginTemplateMixin, ApertureSubsetSelectMixin,
     """
     template_file = __file__, "aper_phot_simple.vue"
     uses_active_status = Bool(True).tag(sync=True)
+
+    aperture_is_markers = Bool(False).tag(sync=True)
+    aperture_marker_radius = Integer(5).tag(sync=True)
 
     aperture_area = Integer().tag(sync=True)
     background_items = List().tag(sync=True)
@@ -454,6 +458,8 @@ class SimpleAperturePhotometry(PluginTemplateMixin, ApertureSubsetSelectMixin,
         if self.config == 'cubeviz':
             self._set_display_unit_of_selected_dataset()
 
+        self.aperture_is_markers = self.aperture_selected == 'Markers'
+
         # NOTE: aperture_selected can be triggered here before aperture_selected_validity is updated
         # so we'll still allow the snackbar to be raised as a second warning to the user and to
         # avoid acting on outdated information
@@ -593,18 +599,25 @@ class SimpleAperturePhotometry(PluginTemplateMixin, ApertureSubsetSelectMixin,
             data = self.dataset.selected_dc_item
 
         if aperture is not None:
-            if aperture not in self.aperture.choices:
+            if aperture not in self.aperture.choices and not isinstance(aperture, CirclePixelRegion):
                 raise ValueError(f"aperture must be one of {self.aperture.choices}")
+            if aperture == 'Markers':
+                raise ValueError("must call calculate_batch_photometry when using markers")
 
         if aperture is not None or dataset is not None:
-            reg = self.aperture._get_spatial_region(subset=aperture if aperture is not None else self.aperture.selected,  # noqa
-                                                    dataset=dataset if dataset is not None else self.dataset.selected)  # noqa
-            # determine if a valid aperture (since selected_validity only applies to selected entry)
-            _, _, validity = self.aperture._get_mark_coords_and_validate(selected=aperture)
-            if not validity.get('is_aperture'):
-                raise ValueError(f"Selected aperture {aperture} is not valid: {validity.get('aperture_message')}")  # noqa
+            if isinstance(aperture, CirclePixelRegion):
+                reg = aperture
+            else:
+                # determine if a valid aperture (since selected_validity only applies to selected entry)
+                _, _, validity = self.aperture._get_mark_coords_and_validate(selected=aperture)
+                if not validity.get('is_aperture'):
+                    raise ValueError(f"Selected aperture {aperture} is not valid: {validity.get('aperture_message')}")  # noqa
+                reg = self.aperture._get_spatial_region(subset=aperture if aperture is not None else self.aperture.selected,  # noqa
+                                                        dataset=dataset if dataset is not None else self.dataset.selected)  # noqa
         else:
             # use the pre-cached value
+            if self.aperture.selected == 'Markers':
+                raise ValueError("must call calculate_batch_photometry when using markers")
             if not self.aperture.selected_validity.get('is_aperture'):
                 raise ValueError(f"Selected aperture is not valid: {self.aperture.selected_validity.get('aperture_message')}")  # noqa
             reg = self.aperture.selected_spatial_region
@@ -1048,7 +1061,7 @@ class SimpleAperturePhotometry(PluginTemplateMixin, ApertureSubsetSelectMixin,
             return
 
         try:
-            if self.multiselect:
+            if self.multiselect or self.aperture_is_markers:
                 # even though plots aren't show in the UI when in multiselect mode,
                 # we'll create the last entry so if multiselect is disabled, the last
                 # iteration will show and not result in confusing behavior
@@ -1110,9 +1123,15 @@ class SimpleAperturePhotometry(PluginTemplateMixin, ApertureSubsetSelectMixin,
         if not isinstance(options, dict):
             raise TypeError("options must be a dictionary")
         if not options:
-            if not self.multiselect:  # pragma: no cover
+            if self.aperture.selected == 'Markers':
+                markers = self.app._jdaviz_helper.plugins['Markers'].export_table()
+                aperture = [CirclePixelRegion(center=PixCoord(x=marker['pixel_x'], y=marker['pixel_y']),
+                                              radius=self.aperture_marker_radius) for marker in markers]
+            elif not self.multiselect:  # pragma: no cover
                 raise ValueError("must either provide a dictionary or set plugin to multiselect mode")  # noqa
-            options = {'dataset': self.dataset.selected, 'aperture': self.aperture.selected}
+            else:
+                aperture = self.aperture.selected
+            options = {'dataset': self.dataset.selected, 'aperture': aperture}
 
         # TODO: use self.user_api once API is made public
         user_api = self  # .user_api
@@ -1183,7 +1202,7 @@ class SimpleAperturePhotometry(PluginTemplateMixin, ApertureSubsetSelectMixin,
         if not np.all([isinstance(option, dict) for option in options]):
             raise TypeError("options must be a list of dictionaries")
         if not len(options):
-            if not self.multiselect:  # pragma: no cover
+            if not self.multiselect and self.aperture.selected != 'Markers':  # pragma: no cover
                 raise ValueError("must either provide manual options or put the plugin in multiselect mode")  # noqa
             # unpack the batch options as provided in the app
             options = self.unpack_batch_options()

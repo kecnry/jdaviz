@@ -2467,6 +2467,7 @@ class ApertureSubsetSelect(SubsetSelect):
                          selected=selected,
                          multiselect=multiselect,
                          filters=['is_spatial'],
+                         manual_options=['Markers'],
                          dataset=dataset,
                          viewers=viewers,
                          default_text=default_text,

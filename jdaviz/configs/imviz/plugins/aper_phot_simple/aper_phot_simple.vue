@@ -48,10 +48,25 @@
         hint="Select aperture region for photometry (cannot be an annulus or composite subset)."
       />
 
-      <v-row v-if="aperture_selected.length && !aperture_selected_validity.is_aperture">
+      <v-row v-if="aperture_selected.length && !aperture_selected_validity.is_aperture && !aperture_is_markers">
         <span class="v-messages v-messages__message text--secondary" style="color: red !important">
             {{aperture_selected}} is not a valid aperture: {{aperture_selected_validity.aperture_message}}.
         </span>
+      </v-row>
+
+      <v-row v-if="aperture_is_markers">
+        <v-text-field
+          :label="api_hints_enabled ? 'plg....' : 'Aperture radius'"
+          :class="api_hints_enabled ? 'api-hint' : null"
+          type="number"
+          v-model.number="aperture_marker_radius"
+          step="1"
+          :rules="[() => aperture_marker_radius!=='' || 'This field is required.',
+                  () => aperture_marker_radius<=100 || 'Radius must be <= 100.',
+                  () => aperture_marker_radius>=1 || 'Radius must be >= 1.']"
+          hint="Radius around each of the markers"
+          persistent-hint
+        >
       </v-row>
 
       <div v-if="aperture_selected.length > 0">
@@ -173,7 +188,7 @@
             :results_isolated_to_plugin="true"
             @click="do_aper_phot"
             :spinner="spinner"
-            :disabled="aperture_selected === background_selected || !aperture_selected_validity.is_aperture || counts_factor < 0"
+            :disabled="aperture_selected === background_selected || !aperture_selected_validity.is_aperture && !aperture_is_markers || counts_factor < 0"
           >
             Calculate
           </plugin-action-button>
