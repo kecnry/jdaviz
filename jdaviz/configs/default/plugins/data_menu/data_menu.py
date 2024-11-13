@@ -358,6 +358,11 @@ class DataMenu(TemplateMixin, LayerSelectMixin, DatasetSelectMixin):
                 layer.visible = visible
             elif hasattr(layer.layer, 'data') and layer.layer.data.label == layer_label:
                 layer.visible = layer.layer.label in self.visible_layers
+        # if visible is False, also turn off visibility of any child layers
+        if not visible:
+            child_layer_labels = self.app._get_assoc_data_children(layer_label)
+            for child_label in child_layer_labels:
+                self.set_layer_visibility(child_label, visible=visible)
         return self.visible_layers
 
     def toggle_layer_visibility(self, layer_label):
