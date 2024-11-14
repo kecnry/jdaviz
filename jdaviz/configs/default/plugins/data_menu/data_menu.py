@@ -149,7 +149,8 @@ class DataMenu(TemplateMixin, LayerSelectMixin, DatasetSelectMixin):
 
     @property
     def user_api(self):
-        expose = ['open_menu', 'layer', 'set_layer_visibility', 'toggle_layer_visibility',
+        expose = ['show', 'open_menu',
+                  'layer', 'set_layer_visibility', 'toggle_layer_visibility',
                   'create_subset', 'modify_subset', 'add_data', 'view_info',
                   'remove_from_viewer', 'remove_from_app']
         if self.app.config == 'imviz':
@@ -177,6 +178,7 @@ class DataMenu(TemplateMixin, LayerSelectMixin, DatasetSelectMixin):
             self.layer.viewer = self._viewer.reference
         except AttributeError:
             return
+        self._registry_label = f"{self.viewer_id} data menu"
 
     def _on_app_icons_updated(self, msg):
         if msg.icon_type == 'viewer':

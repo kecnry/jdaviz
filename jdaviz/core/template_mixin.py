@@ -260,6 +260,54 @@ class TemplateMixin(VuetifyTemplate, HubListener, ViewerPropertiesMixin, WithCac
     def data_collection(self):
         return self._app.session.data_collection
 
+    def show(self, loc="inline", title=None):  # pragma: no cover
+        """Display the UI.
+
+        Parameters
+        ----------
+        loc : str
+            The display location determines where to present the UI.
+            Supported locations:
+
+            "inline": Display the UI inline in a notebook.
+
+            "sidecar": Display the UI in a separate JupyterLab window from the
+            notebook, the location of which is decided by the 'anchor.' right is the default
+
+                Other anchors:
+
+                * ``sidecar:right`` (The default, opens a tab to the right of display)
+                * ``sidecar:tab-before`` (Full-width tab before the current notebook)
+                * ``sidecar:tab-after`` (Full-width tab after the current notebook)
+                * ``sidecar:split-right`` (Split-tab in the same window right of the notebook)
+                * ``sidecar:split-left`` (Split-tab in the same window left of the notebook)
+                * ``sidecar:split-top`` (Split-tab in the same window above the notebook)
+                * ``sidecar:split-bottom`` (Split-tab in the same window below the notebook)
+
+                See `jupyterlab-sidecar <https://github.com/jupyter-widgets/jupyterlab-sidecar>`_
+                for the most up-to-date options.
+
+            "popout": Display the UI in a detached display. By default, a new
+            window will open. Browser popup permissions required.
+
+                Other anchors:
+
+                * ``popout:window`` (The default, opens Jdaviz in a new, detached popout)
+                * ``popout:tab`` (Opens Jdaviz in a new, detached tab in your browser)
+
+        title : str, optional
+            The title of the sidecar tab.  Defaults to the name of the UI element.
+
+            NOTE: Only applicable to a "sidecar" display.
+
+        Notes
+        -----
+        If "sidecar" is requested in the "classic" Jupyter notebook, the UI will appear inline,
+        as only JupyterLab has a mechanism to have multiple tabs.
+        """
+        title = title if title is not None else getattr(self, '_registry_label', '')
+        show_widget(self, loc=loc, title=title)
+
     @property
     def _specviz_helper(self):
         # for helpers that have a .specviz, return that, otherwise the original helper
@@ -606,54 +654,6 @@ class PluginTemplateMixin(TemplateMixin):
         self.keep_active = True
         yield
         self.keep_active = _keep_active
-
-    def show(self, loc="inline", title=None):  # pragma: no cover
-        """Display the plugin UI.
-
-        Parameters
-        ----------
-        loc : str
-            The display location determines where to present the plugin UI.
-            Supported locations:
-
-            "inline": Display the plugin inline in a notebook.
-
-            "sidecar": Display the plugin in a separate JupyterLab window from the
-            notebook, the location of which is decided by the 'anchor.' right is the default
-
-                Other anchors:
-
-                * ``sidecar:right`` (The default, opens a tab to the right of display)
-                * ``sidecar:tab-before`` (Full-width tab before the current notebook)
-                * ``sidecar:tab-after`` (Full-width tab after the current notebook)
-                * ``sidecar:split-right`` (Split-tab in the same window right of the notebook)
-                * ``sidecar:split-left`` (Split-tab in the same window left of the notebook)
-                * ``sidecar:split-top`` (Split-tab in the same window above the notebook)
-                * ``sidecar:split-bottom`` (Split-tab in the same window below the notebook)
-
-                See `jupyterlab-sidecar <https://github.com/jupyter-widgets/jupyterlab-sidecar>`_
-                for the most up-to-date options.
-
-            "popout": Display the plugin in a detached display. By default, a new
-            window will open. Browser popup permissions required.
-
-                Other anchors:
-
-                * ``popout:window`` (The default, opens Jdaviz in a new, detached popout)
-                * ``popout:tab`` (Opens Jdaviz in a new, detached tab in your browser)
-
-        title : str, optional
-            The title of the sidecar tab.  Defaults to the name of the plugin.
-
-            NOTE: Only applicable to a "sidecar" display.
-
-        Notes
-        -----
-        If "sidecar" is requested in the "classic" Jupyter notebook, the plugin will appear inline,
-        as only JupyterLab has a mechanism to have multiple tabs.
-        """
-        title = title if title is not None else self._registry_label
-        show_widget(self, loc=loc, title=title)
 
 
 class BasePluginComponent(HubListener, ViewerPropertiesMixin, WithCache):
