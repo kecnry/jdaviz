@@ -36,6 +36,7 @@ dependencies = [
     "scikit-image",
     "sidecar>=0.5.2",
     "ipypopout>=2.0.0",
+    "ipyvuedraggable",
     "astroquery",
     "requests",
     "nbclassic",

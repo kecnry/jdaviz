@@ -157,9 +157,9 @@
               multiple
               dense
             >
-              <div>
+              <draggable v-model="layer_items" :group="{name:'layers'}" style="min-height: 10px"> 
               <v-list-item 
-                v-for="item in layer_items.slice().reverse()" 
+                v-for="item in layer_items" 
                 class="layer-select" 
               > 
                 <v-list-item-icon>
@@ -198,7 +198,7 @@
                   </j-tooltip>
                 </v-list-item-action>
               </v-list-item>
-              </div>
+              </draggable>
             </v-list-item-group>
             <hover-api-hint 
               v-if="api_hints_enabled" 
