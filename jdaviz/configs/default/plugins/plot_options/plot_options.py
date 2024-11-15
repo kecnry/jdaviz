@@ -383,7 +383,8 @@ class PlotOptions(PluginTemplateMixin, ViewerSelectMixin):
         self._plugin_description = 'Set viewer and layer display options.'
 
         self.layer = LayerSelect(self, 'layer_items', 'layer_selected',
-                                 'viewer_selected', 'layer_multiselect')
+                                 'viewer_selected', 'layer_multiselect',
+                                 sort_by='zorder')
 
         self.layer.filters += [is_not_wcs_only]
 
@@ -734,14 +735,14 @@ class PlotOptions(PluginTemplateMixin, ViewerSelectMixin):
                 self.image_color_mode_sync['mixed']):
             raise ValueError("RGB presets can only be applied if color mode is Color.")
         # Preselected colors we want to use for 5 or less layers
-        preset_colors = [self.swatches_palette[4][1],
-                         "#0000FF",
-                         "#00FF00",
+        preset_colors = [self.swatches_palette[0][0],
                          self.swatches_palette[1][0],
-                         self.swatches_palette[0][0],
-                         ]
+                         "#00FF00",
+                         "#0000FF",
+                         self.swatches_palette[4][1],
+                        ]
 
-        preset_inds = {2: [1, 4], 3: [1, 2, 4], 4: [1, 2, 3, 4]}
+        preset_inds = {2: [0, 3], 3: [0, 1, 2], 4: [0, 1, 2, 3]}
 
         # Switch back to this at the end
         initial_layer = self.layer_selected
@@ -761,14 +762,14 @@ class PlotOptions(PluginTemplateMixin, ViewerSelectMixin):
             # Have to reverse the order of the cmap to make physical sense with
             # assumed wavelength order of layers.
             preset_colors = [matplotlib.colors.to_hex(cmap(i), keep_alpha=True) for
-                             i in range(n_visible - 1, -1, -1)]
+                             i in range(n_visible)]
         elif n_visible >= 2 and n_visible < len(preset_colors):
             preset_colors = [preset_colors[i] for i in preset_inds[n_visible]]
 
-        for i in range(n_visible):
-            self.layer_selected = visible_layers[i]
+        for layer, color in zip(visible_layers, preset_colors):
+            self.layer_selected = layer
             self.image_opacity.unmix_state(default_opacity)
-            self.image_color.unmix_state(preset_colors[i])
+            self.image_color.unmix_state(color)
             self.stretch_function.unmix_state("arcsinh")
             self.stretch_preset.unmix_state(99)
 

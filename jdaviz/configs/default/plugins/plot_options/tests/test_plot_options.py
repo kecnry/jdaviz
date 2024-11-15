@@ -274,7 +274,7 @@ def test_apply_presets(imviz_helper):
         po.layer = f"array_{i}"
         assert po.stretch_function.value == "arcsinh"
         assert po.stretch_preset.value == 99
-        assert po.image_color.value == preset_colors_4[i]
+        assert po.image_color.value.lower() == preset_colors_4[i].lower()
 
     # Test applying presets with > 5 layers
 
@@ -298,7 +298,6 @@ def test_apply_presets(imviz_helper):
     po.apply_RGB_presets()
 
     colorbar_colors = matplotlib.colormaps['gist_rainbow'].resampled(8)
-    color_ind = 0
 
     def _rgb_to_hex(rgb):
         rgb = [int(x * 255) for x in rgb]
@@ -308,9 +307,8 @@ def test_apply_presets(imviz_helper):
         po.layer = f"array_{i}"
         assert po.stretch_function.value == "arcsinh"
         assert po.stretch_preset.value == 99
-        assert po.image_color.value == matplotlib.colors.to_hex(colorbar_colors(7-color_ind),
+        assert po.image_color.value == matplotlib.colors.to_hex(colorbar_colors(i),
                                                                 keep_alpha=True)
-        color_ind += 1
 
 
 def test_track_mixed_states(imviz_helper):
@@ -339,10 +337,10 @@ def test_track_mixed_states(imviz_helper):
     # Switch to multiselect to test mixing and unmixing of states
     po.multiselect = True
     po.viewer_selected = ["imviz-0", "imviz-1"]
-    assert po.layer.items[-1]["label"] == "array_2"
+    assert po.layer.items[0]["label"] == "array_2"
     # The corresponding layer in each viewer is the same color,
     # so the state is not mixed.
-    assert len(po.layer.items[-1]["colors"]) == 1
+    assert len(po.layer.items[0]["colors"]) == 1
 
     # Change the color of one of the layers in one viewer
     po.viewer_selected = ["imviz-1"]
@@ -350,39 +348,39 @@ def test_track_mixed_states(imviz_helper):
     po.image_color.value = "#595959"
     po.viewer_selected = ["imviz-0", "imviz-1"]
     # The color state is now mixed when two viewers are selected
-    assert po.layer.items[-1]["label"] == "array_2"
-    assert len(po.layer.items[-1]["colors"]) == 2
+    assert po.layer.items[0]["label"] == "array_2"
+    assert len(po.layer.items[0]["colors"]) == 2
 
     # Now test mixed visibility
     po.viewer_selected = ["imviz-1"]
     po.layer_selected = ["array_1", "array_2"]
     po.image_visible.value = False
     po.viewer_selected = ["imviz-0", "imviz-1"]
-    assert po.layer.items[-1]["label"] == "array_2"
-    assert po.layer.items[-1]["visible"] == 'mixed'
-    assert po.layer.items[-2]["label"] == "array_1"
-    assert po.layer.items[-2]["visible"] == 'mixed'
+    assert po.layer.items[0]["label"] == "array_2"
+    assert po.layer.items[0]["visible"] == 'mixed'
+    assert po.layer.items[1]["label"] == "array_1"
+    assert po.layer.items[1]["visible"] == 'mixed'
 
     # Test unmixing visibility
     po.image_visible.unmix_state(True)
-    assert po.layer.items[-1]["visible"] is True
-    assert po.layer.items[-1]["visible"]
-    assert po.layer.items[-2]["visible"] is True
-    assert po.layer.items[-2]["visible"]
+    assert po.layer.items[0]["visible"] is True
+    assert po.layer.items[0]["visible"]
+    assert po.layer.items[1]["visible"] is True
+    assert po.layer.items[1]["visible"]
 
     # Now test unmixing color
     po.viewer_selected = ["imviz-0", "imviz-1"]
-    assert len(po.layer.items[-1]["colors"]) > 1
-    assert len(po.layer.items[-2]["colors"]) == 1
+    assert len(po.layer.items[0]["colors"]) > 1
+    assert len(po.layer.items[1]["colors"]) == 1
 
     # Make sure that all selected layers are no longer
     # mixed state and are the same color
     po.image_color.unmix_state()
-    assert len(po.layer.items[-1]["colors"]) == 1
-    assert len(po.layer.items[-2]["colors"]) == 1
+    assert len(po.layer.items[0]["colors"]) == 1
+    assert len(po.layer.items[1]["colors"]) == 1
     assert po.image_color.value == "#00ff00"
-    assert po.layer.items[-1]["colors"][0] == "#00ff00"
-    assert po.layer.items[-2]["colors"][0] == "#00ff00"
+    assert po.layer.items[0]["colors"][0] == "#00ff00"
+    assert po.layer.items[1]["colors"][0] == "#00ff00"
 
     # test spline stretch mixed state
     po.viewer_selected = ["imviz-0"]
