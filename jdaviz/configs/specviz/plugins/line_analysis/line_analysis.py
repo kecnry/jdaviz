@@ -115,6 +115,7 @@ class LineAnalysis(PluginTemplateMixin, DatasetSelectMixin, SpectralSubsetSelect
         # when accessing the selected data, access the spectrum-viewer version
         self.dataset._viewers = [self._default_spectrum_viewer_reference_name]
         # require entries to be in spectrum-viewer (not other cubeviz images, etc)
+        self.dataset.remove_filter('not_from_plugin_model_fitting')
         self.dataset.add_filter('layer_in_spectrum_viewer')
 
         # continuum selection is mandatory for line-analysis
