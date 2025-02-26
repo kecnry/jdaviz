@@ -448,6 +448,9 @@ class DataMenu(TemplateMixin, LayerSelectMixin, DatasetSelectMixin):
     def vue_add_data_to_viewer(self, info, *args):
         self.add_data(info.get('data_label'))  # pragma: no cover
 
+    def vue_open_loaders_in_tray(self, *args):
+        self._viewer.jdaviz_helper.app.state.drawer_content = 'loaders'  # pragma: no cover
+
     def create_subset(self, subset_type):
         """
         Interactively create a new subset in the viewer.  This sets the app-wide subset

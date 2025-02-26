@@ -143,6 +143,7 @@
                   :api_hints_enabled="api_hints_enabled"
                   :icons="icons"
                   @add-data="(data_label) => {add_data_to_viewer({data_label: data_label})}"
+                  @open-loaders="open_loaders_in_tray"
                   @create-subset="(subset_type) => {create_subset({subset_type: subset_type}); data_menu_open = false}"
                 >
                 </data-menu-add>

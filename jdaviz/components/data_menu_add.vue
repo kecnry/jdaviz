@@ -21,12 +21,12 @@
       </j-tooltip>
     </template>
     <v-list dense style="width: 300px; max-height: 300px; overflow-y: auto;">
-      <v-subheader v-if="dataset_items.length > 0"><span>Load Data</span></v-subheader>
+      <v-subheader v-if="dataset_items.length > 0"><span>Load Data Into Viewer</span></v-subheader>
       <v-list-item
         v-for="data in dataset_items"
       >
         <v-list-item-content>
-          <j-tooltip tooltipcontent="add data to viewer">
+          <j-tooltip :tooltipcontent="'Add '+data.label+' to viewer'">
             <span
               style="cursor: pointer; width: 100%"
               :class="api_hints_enabled ? 'api-hint' : ''"
@@ -41,6 +41,19 @@
           </j-tooltip>
         </v-list-item-content>
       </v-list-item>
+
+      <v-subheader><span>Load Data Into App</span></v-subheader>
+      <v-list-item>
+        <j-tooltip tooltipcontent="Import new data into app and viewer">
+          <span
+            style="cursor: pointer; width: 100%"
+            @click="() => {$emit('open-loaders')}"
+          >
+            Load New Data
+          </span>
+        </j-tooltip>
+      </v-list-item>
+
       <v-subheader v-if="subset_tools.length > 0"><span>Create Subset</span></v-subheader>
       <v-list-item
         v-if="subset_tools.length > 0"
