@@ -484,6 +484,7 @@ class JdavizProfileView(JdavizViewerMixin, BqplotProfileView):
         super()._expected_subset_layer_default(layer_state)
 
         layer_state.linewidth = 3
+        layer_state.visible = True
 
     def data(self, cls=None):
         # Grab the user's chosen statistic for collapsing data

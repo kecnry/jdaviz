@@ -391,16 +391,21 @@ class DataMenu(TemplateMixin, LayerSelectMixin, DatasetSelectMixin):
         """
         for layer in self._viewer.layers:
             if layer.layer.label == layer_label:
+                print("*** first if", visible)
                 layer.visible = visible
+                print("*** layer.visible=", layer, layer.visible)
             elif hasattr(layer.layer, 'data') and layer.layer.data.label == layer_label:
+                print("*** elif", layer.layer.label, layer.layer.label in self.visible_layers)
                 layer.visible = layer.layer.label in self.visible_layers
             if not visible and self.app._get_assoc_data_parent(layer.layer.label) == layer_label:
                 # then this is a child-layer of a parent-layer that is being hidden
                 # so also hide the child-layer
+                print("*** second if", False)
                 layer.visible = False
 
         if visible and (parent_label := self.app._get_assoc_data_parent(layer_label)):
             # ensure the parent layer is also visible
+            print("*** third if", parent_label, True)
             self.set_layer_visibility(parent_label, visible=True)
 
         return self.visible_layers
@@ -424,7 +429,8 @@ class DataMenu(TemplateMixin, LayerSelectMixin, DatasetSelectMixin):
         return visible
 
     def vue_set_layer_visibility(self, info, *args):
-        return self.set_layer_visibility(info.get('layer'), info.get('value'))  # pragma: no cover
+        print("*** vue_set_layer_visibility", info)
+        self.set_layer_visibility(info.get('layer'), info.get('value'))  # pragma: no cover
 
     def add_data(self, *data_labels):
         """
