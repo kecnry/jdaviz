@@ -57,7 +57,7 @@
     >
       <v-container class="fill-height pa-0" fluid>
         <splitpanes>
-          <pane size="75">
+          <pane :size="state.viewer_icons.length ? '75' : '0'">
             <golden-layout
               v-if="outputCellHasHeight"
               style="height: 100%;"
@@ -84,7 +84,7 @@
               </gl-row>
             </golden-layout>
           </pane>
-          <pane size="25" min-size="25" v-if="state.drawer_content.length > 0" style="background-color: #fafbfc; border-top: 6px solid #C75109; min-width: 250px">
+          <pane :size="state.viewer_icons.length ? '25' : '100'" min-size="25" v-if="state.drawer_content.length > 0" style="background-color: #fafbfc; border-top: 6px solid #C75109; min-width: 250px">
 
             <v-card v-if="state.drawer_content === 'loaders'" flat tile class="overflow-y-auto fill-height" style="overflow-x: hidden" color="gray">
               <j-loader-panel
