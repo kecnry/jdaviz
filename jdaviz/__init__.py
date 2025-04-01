@@ -24,14 +24,21 @@ _expose = ['show', 'load', 'batch_load',
            'plugins',
            'loaders',
            'viewers']
-_incl = ['App', 'enable_hot_reloading', '__version__']
+_incl = ['App', 'enable_hot_reloading', '__version__', 'reset']
 _temporary_incl = ['open', 'Cubeviz', 'Imviz', 'Mosviz', 'Rampviz', 'Specviz', 'Specviz2d']
 __all__ = _expose + _incl + _temporary_incl
 
 
 global _ca
 
-_ca = App(api_hints_obj='jd')
+
+def reset():
+    global _ca
+    _ca = App(api_hints_obj='jd')
+    return _ca
+
+
+reset()
 
 
 def __dir__():
