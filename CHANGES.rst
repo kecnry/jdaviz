@@ -56,6 +56,8 @@ Specviz2d
 - Loading data is now done through the loaders menu in the right sidebar.  The "import data" button is
   deprecated and will open the new sidebar.  [#3473]
 
+- New plugin to vizualize the cross-dispersion profile [#3552]
+
 API Changes
 -----------
 

@@ -5,13 +5,13 @@ import numpy as np
 from bqplot import LinearScale
 from specreduce.tracing import FlatTrace
 from specreduce.utils import measure_cross_dispersion_profile
-from traitlets import Bool, Float, Integer, List, Unicode, observe
+from traitlets import Bool, Integer, List, Unicode, observe
 
-from jdaviz.core.events import GlobalDisplayUnitChanged, SnackbarMessage
-from jdaviz.core.marks import PluginLine, PluginMarkCollection, PluginScatter
+from jdaviz.core.events import GlobalDisplayUnitChanged
+from jdaviz.core.marks import PluginLine, PluginScatter
 from jdaviz.core.registries import tray_registry
 from jdaviz.core.template_mixin import (DatasetSelect, PluginTemplateMixin,
-                                        PlotMixin, SelectPluginComponent)
+                                        PlotMixin)
 from jdaviz.core.unit_conversion_utils import (all_flux_unit_conversion_equivs,
                                                flux_conversion_general)
 
@@ -20,7 +20,7 @@ __all__ = ['CrossDispersionProfile']
 
 @tray_registry('cross-dispersion-profile', label="Cross Dispersion Profile")
 class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
-    
+
     template_file = __file__, "cross_dispersion_profile.vue"
 
     uses_active_status = Bool(True).tag(sync=True)
@@ -65,8 +65,8 @@ class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
         self._plugin_description = 'Visualize cross-dispersion profile.'
 
         self.dataset = DatasetSelect(self,
-                                    'dataset_items',
-                                    'dataset_selected',
+                                     'dataset_items',
+                                     'dataset_selected',
                                      filters=['layer_in_spectrum_2d_viewer',
                                               'not_trace'])
 
@@ -136,7 +136,6 @@ class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
         # re-compute profile and update plot to new units
         self.measure_cross_dispersion_profile(update_plot=True)
 
-
     @property
     def marks(self):
         """
@@ -200,7 +199,8 @@ class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
                                                 (self.y_pixel, self.y_pixel))
             self.marks['2d']['y_pix'].visible = self.is_active
 
-            if hasattr(data, 'wcs') and self.sa_display_unit != '':  # plot line in 1d viewer when possible
+            # plot line in 1d viewer when possible
+            if hasattr(data, 'wcs') and self.sa_display_unit != '':
                 wcs = self.dataset.selected_obj.wcs
                 wav = wcs.pixel_to_world(self.pixel)
                 wav = wav.to(u.Unit(self.sa_display_unit), u.spectral()).value
@@ -254,10 +254,10 @@ class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
             # translate x-axis of plot to image y-axis coordinates so plot
             # is centered on y_pixel
             x += int(self.y_pixel - (self.width / 2))
-        
+
         self.plot._update_data('profile', x=x, y=self.profile, reset_lims=True)
         self.plot.update_style('profile', line_visible=True, color='gray',
-                                size=32)
+                               size=32)
 
         title = f'Cross dispersion profile for pixel {self.pixel}'
         # include wavelength in plot title, if possible
