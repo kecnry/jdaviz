@@ -95,8 +95,8 @@ class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
 
     @property
     def user_api(self):
-        expose=('dataset', 'pixel', 'y_pixel', 'use_full_width', 'width',
-                'profile')
+        expose = ('dataset', 'pixel', 'y_pixel', 'use_full_width', 'width',
+                  'profile')
         return PluginUserApi(self, expose=expose)
 
     @observe("dataset_selected")
@@ -198,7 +198,6 @@ class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
 
         return self._marks
 
-
     @observe('dataset_selected', 'is_active', 'pixel', 'wav', 'y_pixel', 'width', 'use_full_width')
     def _pixel_selected_mark(self, event={}):
         """
@@ -231,7 +230,6 @@ class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
                 # wav = wav.to(u.Unit(self.sa_display_unit), u.spectral()).value
                 self.marks['1d']['pix'].update_xy([self.wav, self.wav], [0, 1])
                 self.marks['1d']['pix'].visible = self.is_active
-
 
     @observe('pixel', 'y_pixel', 'is_active', 'width', 'use_full_width')
     def measure_cross_dispersion_profile(self, update_plot=True):
