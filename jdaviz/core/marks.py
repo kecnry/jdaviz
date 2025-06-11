@@ -132,6 +132,7 @@ class PluginMarkCollection:
 
 class PluginMark:
     def __init__(self, *args, **kwargs):
+        print('plugin mark', self)
         super().__init__(*args, **kwargs)
         self.xunit = None
         self.yunit = None
@@ -208,17 +209,23 @@ class PluginMark:
             return
 
         if self.yunit is not None and not np.all([s == 0 for s in self.y.shape]):  # noqa
-
             if self.viewer.default_class is Spectrum1D:
                 if self.xunit is None:
                     return
                 spec = self.viewer.state.reference_data.get_object(cls=Spectrum1D)
 
                 pixar_sr = spec.meta.get('PIXAR_SR', None)
-                cube_wave = self.x * self.xunit
-                equivs = all_flux_unit_conversion_equivs(pixar_sr, cube_wave)
+                # if x is all the same value, then we either have a vertical line mark or
+                # a flat spectrum, in either case we can use a single value for the spectral
+                # density equivalency.
+                if len(np.unique(self.x)) == 1 and (len(self.x) != len(self.y)):
+                    wave = self.x[0] * self.xunit
+                else:
+                    wave = self.x * self.xunit
+                equivs = all_flux_unit_conversion_equivs(pixar_sr, wave)
                 y = flux_conversion_general(self.y, self.yunit, unit,
                                             equivs, with_unit=False)
+
             self.y = y
 
         self.yunit = unit

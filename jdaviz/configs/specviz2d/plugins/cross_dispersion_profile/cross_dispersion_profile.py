@@ -113,6 +113,7 @@ class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
             self.y_pixel = math.floor(data.shape[0] / 2)
             # default value for 'pixel' is middle of spectral axis
             self.pixel = math.floor(data.shape[1] / 2)
+            self._pixel_to_wav()  # also set corresponding wavelength
             # slider limits
             self.max_y_pix = data.shape[0]
             self.max_pix = data.shape[1]
@@ -121,7 +122,7 @@ class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
             # set appropriate default 'width' if use_full_width=False
             self.width = data.shape[0]
 
-    @observe('pixel')
+    @observe('pixel', 'sa_display_unit')
     def _pixel_to_wav(self, event={}):
         """
         Calculate the corresponding wavelength for ``pixel``, if wcs is present,
@@ -246,7 +247,8 @@ class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
         Parameters
         ----------
         update_plot : bool, optional
-            If True (default), update plugin plot with computed profile.
+            If True (default), update plugin plot with computed profile, if the
+            plugin is active.
         """
 
         data = self.dataset.selected_obj
@@ -270,14 +272,15 @@ class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
                                                    align_along_trace=False)
 
         # convert profile, which was computed in data units, to display unit
-        eqv = all_flux_unit_conversion_equivs(data.meta.get('PIXAR_SR', 1.0),
-                                              data.spectral_axis)
-        profile = flux_conversion_general(profile.value, profile.unit,
-                                          self.flux_display_unit, eqv)
+        if self.sa_display_unit != '':
+            eqv = all_flux_unit_conversion_equivs(data.meta.get('PIXAR_SR', 1.0),
+                                                  self.wav * u.Unit(self.sa_display_unit))
+            profile = flux_conversion_general(profile.value, profile.unit,
+                                              self.flux_display_unit, eqv)
 
         self._profile = profile
 
-        if update_plot:
+        if update_plot and self.is_active:
             self.update_plot()
 
     def update_plot(self):
