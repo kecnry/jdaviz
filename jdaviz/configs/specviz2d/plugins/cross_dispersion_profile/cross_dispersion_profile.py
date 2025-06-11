@@ -5,7 +5,7 @@ import numpy as np
 from bqplot import LinearScale
 from specreduce.tracing import FlatTrace
 from specreduce.utils import measure_cross_dispersion_profile
-from traitlets import Bool, Integer, List, Unicode, observe
+from traitlets import Bool, Float, Integer, List, Unicode, observe
 
 from jdaviz.core.events import GlobalDisplayUnitChanged
 from jdaviz.core.marks import PluginLine, PluginScatter
@@ -14,12 +14,25 @@ from jdaviz.core.template_mixin import (DatasetSelect, PluginTemplateMixin,
                                         PlotMixin)
 from jdaviz.core.unit_conversion_utils import (all_flux_unit_conversion_equivs,
                                                flux_conversion_general)
+from jdaviz.core.user_api import PluginUserApi
 
 __all__ = ['CrossDispersionProfile']
 
 
 @tray_registry('cross-dispersion-profile', label="Cross Dispersion Profile")
 class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
+    """
+    The Cross Dispersion Profile plugin allows for visualizaion of the
+    cross-dispersion profile of 2d spectra, at a specified wavelength / pixel
+    and window.
+
+    The following attributes and methods are available through the
+    :ref:`public plugin API <plugin-apis>`:
+
+    * :meth:`~jdaviz.core.template_mixin.PluginTemplateMixin.show`
+    * :meth:`~jdaviz.core.template_mixin.PluginTemplateMixin.open_in_tray`
+    * :meth:`~jdaviz.core.template_mixin.PluginTemplateMixin.close_in_tray`
+    """
 
     template_file = __file__, "cross_dispersion_profile.vue"
 
@@ -28,15 +41,13 @@ class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
     dataset_items = List().tag(sync=True)
     dataset_selected = Unicode().tag(sync=True)
 
-    trace_items = List().tag(sync=True)
-    trace_selected = Unicode().tag(sync=True)
-
     # pixel on cross dispersion axis where profile will be centered. a FlatTrace
     # at y_pixel will be created to measure the profile.
     y_pixel = Integer().tag(sync=True)
 
     # pixel on spectral axis to measure profile
     pixel = Integer().tag(sync=True)
+    wav = Float().tag(sync=True)  # corresponding wavelength, if available
 
     # set maximum values for slider limits
     max_pix = Integer().tag(sync=True)
@@ -74,7 +85,7 @@ class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
                            handler=self._on_display_units_changed)
 
         # attribute to access computed profile, will be a quantity array
-        self.profile = None
+        self._profile = None
 
         # override default plot styling
         self.plot.figure.fig_margin = {'top': 60, 'bottom': 60, 'left': 65,
@@ -82,14 +93,19 @@ class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
         self.plot.viewer.axis_y.tick_format = '0.1e'
         self.plot.viewer.axis_y.label_offset = '50px'
 
+    @property
+    def user_api(self):
+        expose=('dataset', 'pixel', 'y_pixel', 'use_full_width', 'width',
+                'profile')
+        return PluginUserApi(self, expose=expose)
+
     @observe("dataset_selected")
     def _set_defaults(self, event={}):
         """
-        When a dataset is selected, re-calculate the default values for pixel
-        and the slider limits for selecting row/column where the profile will
-        be measured.
+        When a dataset is selected, re-calculate the default values for pixel,
+        y_pixel, width, and the slider limits for selecting row/column where
+        the profile will be measured.
         """
-
         # self.dataset might not exist when app is setting itself up.
         if hasattr(self, "dataset") and self.dataset.selected_obj is not None:
             data = self.dataset.selected_obj
@@ -104,6 +120,19 @@ class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
             self.use_full_width = True
             # set appropriate default 'width' if use_full_width=False
             self.width = data.shape[0]
+
+    @observe('pixel')
+    def _pixel_to_wav(self, event={}):
+        """
+        Calculate the corresponding wavelength for ``pixel``, if wcs is present,
+        when ``pixel`` is changed.
+        """
+        data = self.dataset.selected_obj
+        if data is not None:
+            if hasattr(data, 'wcs') and self.sa_display_unit != '':
+                wcs = self.dataset.selected_obj.wcs
+                wav = wcs.pixel_to_world(self.pixel)
+                self.wav = wav.to(u.Unit(self.sa_display_unit), u.spectral()).value
 
     def _on_display_units_changed(self, event={}):
         """
@@ -124,17 +153,15 @@ class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
                 return
             self.sa_display_unit = event.unit.to_string()
 
-            # update marks in 1d viewer
-            data = self.dataset.selected_obj
-            if hasattr(data, 'wcs') and self.sa_display_unit != '':
-                wcs = self.dataset.selected_obj.wcs
-                wav = wcs.pixel_to_world(self.pixel)
-                wav = wav.to(u.Unit(self.sa_display_unit), u.spectral()).value
-                self.marks['1d']['pix'].update_xy([wav, wav], [0, 1])
-                self.marks['1d']['pix'].visible = self.is_active
+            # convert ``pixel`` to new wavelength unit
+            self._pixel_to_wav()
 
         # re-compute profile and update plot to new units
         self.measure_cross_dispersion_profile(update_plot=True)
+
+    @property
+    def profile(self):
+        return self._profile
 
     @property
     def marks(self):
@@ -171,15 +198,13 @@ class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
 
         return self._marks
 
-    @observe('dataset_selected', 'is_active', 'pixel', 'y_pixel', 'width', 'use_full_width')
+
+    @observe('dataset_selected', 'is_active', 'pixel', 'wav', 'y_pixel', 'width', 'use_full_width')
     def _pixel_selected_mark(self, event={}):
         """
-        Update drawn marks (synced vertical lines in 2d and 1d spectrum viewers)
-        for current selected pixel, when changed. If y_pixel is used to denote
-        the center of the profile on the cross dispersion axis (rather than using
-        a trace object exported from the spectral extraction plugin), then a
-        scatter mark from this plugin will be drawn to show the row used as the
-        midpoint of the profile.
+        Update drawn marks (synced vertical lines in 2d and 1d spectrum viewers,
+        scatter mark to mark center of profile on y axis) for current selected
+        pixel, when any relevant parameter is changed or plugin is made active.
         """
 
         data = self.dataset.selected_obj
@@ -201,14 +226,30 @@ class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
 
             # plot line in 1d viewer when possible
             if hasattr(data, 'wcs') and self.sa_display_unit != '':
-                wcs = self.dataset.selected_obj.wcs
-                wav = wcs.pixel_to_world(self.pixel)
-                wav = wav.to(u.Unit(self.sa_display_unit), u.spectral()).value
-                self.marks['1d']['pix'].update_xy([wav, wav], [0, 1])
+                # wcs = self.dataset.selected_obj.wcs
+                # wav = wcs.pixel_to_world(self.pixel)
+                # wav = wav.to(u.Unit(self.sa_display_unit), u.spectral()).value
+                self.marks['1d']['pix'].update_xy([self.wav, self.wav], [0, 1])
                 self.marks['1d']['pix'].visible = self.is_active
+
 
     @observe('pixel', 'y_pixel', 'is_active', 'width', 'use_full_width')
     def measure_cross_dispersion_profile(self, update_plot=True):
+        """
+        Measure the cross-dispersion profile.
+
+        Calculates the cross-dispersion profile for the currently
+        selected dataset at column ``pixel``. If ``use_full_width`` is True,
+        the profile is computed over the entire detector width, otherwise,
+        a user-defined ``width`` and center ``y_pixel`` are used. The profile
+        is returned and plotted in the app-wide flux display unit, as set in
+        the Unit Conversion plugin.
+
+        Parameters
+        ----------
+        update_plot : bool, optional
+            If True (default), update plugin plot with computed profile.
+        """
 
         data = self.dataset.selected_obj
         if data is None:
@@ -236,13 +277,13 @@ class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
         profile = flux_conversion_general(profile.value, profile.unit,
                                           self.flux_display_unit, eqv)
 
-        self.profile = profile
+        self._profile = profile
 
         if update_plot:
             self.update_plot()
 
     def update_plot(self):
-        """Update plot with current self.profile."""
+        """Update plugin plot with self.profile."""
 
         data = self.dataset.selected_obj
         if data is None:
@@ -260,7 +301,7 @@ class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
                                size=32)
 
         title = f'Cross dispersion profile for pixel {self.pixel}'
-        # include wavelength in plot title, if possible
+        # include wavelength in plot title, if available
         if hasattr(data, 'wcs'):  # also plot line in spectrum viewer
             wcs = self.dataset.selected_obj.wcs
             loc = round(wcs.pixel_to_world(self.pixel).value, 3)
