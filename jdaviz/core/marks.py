@@ -132,7 +132,6 @@ class PluginMarkCollection:
 
 class PluginMark:
     def __init__(self, *args, **kwargs):
-        print('plugin mark', self)
         super().__init__(*args, **kwargs)
         self.xunit = None
         self.yunit = None
@@ -234,10 +233,8 @@ class PluginMark:
         if not self.auto_update_units:
             return
         if self.viewer.__class__.__name__ in ['Spectrum1DViewer',
-                                              'Spectrum2DViewer',
                                               'CubevizProfileView',
-                                              'MosvizProfileView',
-                                              'MosvizProfile2DView']:
+                                              'MosvizProfileView']:
             axis_map = {'spectral': 'x', 'spectral_y': 'y'}
         else:
             return

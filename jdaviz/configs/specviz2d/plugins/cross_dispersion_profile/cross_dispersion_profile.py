@@ -7,7 +7,7 @@ from specreduce.tracing import FlatTrace
 from specreduce.utils import measure_cross_dispersion_profile
 from traitlets import Bool, Float, Integer, List, Unicode, observe
 
-from jdaviz.core.events import GlobalDisplayUnitChanged
+from jdaviz.core.events import GlobalDisplayUnitChanged, SnackbarMessage, ViewerVisibleLayersChangedMessage
 from jdaviz.core.marks import PluginLine, PluginScatter
 from jdaviz.core.registries import tray_registry
 from jdaviz.core.template_mixin import (DatasetSelect, PluginTemplateMixin,
@@ -15,6 +15,7 @@ from jdaviz.core.template_mixin import (DatasetSelect, PluginTemplateMixin,
 from jdaviz.core.unit_conversion_utils import (all_flux_unit_conversion_equivs,
                                                flux_conversion_general)
 from jdaviz.core.user_api import PluginUserApi
+from jdaviz.utils import get_top_layer_index
 
 __all__ = ['CrossDispersionProfile']
 
@@ -67,6 +68,8 @@ class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
 
     plot_available = Bool(False).tag(sync=True)
 
+    top_layer_name = Unicode("").tag(sync=True)
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -84,6 +87,9 @@ class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
         self.hub.subscribe(self, GlobalDisplayUnitChanged,
                            handler=self._on_display_units_changed)
 
+        self.hub.subscribe(self, ViewerVisibleLayersChangedMessage,
+                           handler=self._visible_layer_changed)
+
         # attribute to access computed profile, will be a quantity array
         self._profile = None
 
@@ -98,6 +104,19 @@ class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
         expose = ('dataset', 'pixel', 'y_pixel', 'use_full_width', 'width',
                   'profile')
         return PluginUserApi(self, expose=expose)
+
+    def _visible_layer_changed(self, event={}):
+        """
+        When visible layers are changed, select the top visible layer
+        as dataset to compute profile.
+        """
+        if hasattr(self, "dataset") and self.dataset.selected_obj is not None:
+            v2d = self.app.get_viewer_by_id('specviz2d-0')
+            i = get_top_layer_index(v2d)
+            if i is not None:
+                # the ViewerVisibleLayersChangedMessage is emitted before the
+                # AddDataMessage, so store the correct data label
+                self.top_layer_name = v2d.state.layers[i].layer.label
 
     @observe("dataset_selected")
     def _set_defaults(self, event={}):
@@ -150,6 +169,7 @@ class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
             self.flux_display_unit = event.unit.to_string()
 
         if event.axis == 'spectral':
+            self.hub.broadcast(SnackbarMessage(f"spectral changed message recieved", color='error', sender=self))
             if self.sa_display_unit == event.unit:
                 return
             self.sa_display_unit = event.unit.to_string()
@@ -199,7 +219,7 @@ class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
 
         return self._marks
 
-    @observe('dataset_selected', 'is_active', 'pixel', 'wav', 'y_pixel', 'width', 'use_full_width')
+    @observe('dataset_selected', 'is_active', 'pixel', 'y_pixel', 'width', 'use_full_width')
     def _pixel_selected_mark(self, event={}):
         """
         Update drawn marks (synced vertical lines in 2d and 1d spectrum viewers,
@@ -224,11 +244,9 @@ class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
                                                 (self.y_pixel, self.y_pixel))
             self.marks['2d']['y_pix'].visible = self.is_active
 
-            # plot line in 1d viewer when possible
+            # plot line in 1d viewer when possible, unit conversion is handled
+            # inside of Marks so we don't need to convert the limits here
             if hasattr(data, 'wcs') and self.sa_display_unit != '':
-                # wcs = self.dataset.selected_obj.wcs
-                # wav = wcs.pixel_to_world(self.pixel)
-                # wav = wav.to(u.Unit(self.sa_display_unit), u.spectral()).value
                 self.marks['1d']['pix'].update_xy([self.wav, self.wav], [0, 1])
                 self.marks['1d']['pix'].visible = self.is_active
 
