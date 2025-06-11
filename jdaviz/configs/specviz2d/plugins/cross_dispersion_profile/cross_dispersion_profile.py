@@ -167,15 +167,15 @@ class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
         if not self._tray_instance:
             return {}
 
-        v2d = self.app.get_viewer_by_id('specviz2d-0')
-        v1d = self.app.get_viewer_by_id('specviz2d-1')
+        v2d = self.spectrum_2d_viewers[0]
+        v1d = self.spectrum_1d_viewers[0]
 
         if not v2d.state.reference_data:
             return {}
 
         self._marks = {'2d': {'pix': PluginLine(v2d,
                                                 visible=self.is_active,
-                                                line_style='dashed'),
+                                                line_style='solid'),
                               'y_pix': PluginScatter(v2d, marker='diamond',
                                                      stroke_width=1)},
                        '1d': {'pix': PluginLine(v1d,
@@ -184,7 +184,7 @@ class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
                                                         'y': LinearScale(min=0,
                                                                          max=1)},
                                                 visible=self.is_active,
-                                                line_style='dashed')}}
+                                                line_style='solid')}}
 
         v2d.figure.marks = v2d.figure.marks + list(self._marks['2d'].values())
         v1d.figure.marks = v1d.figure.marks + list(self._marks['1d'].values())
