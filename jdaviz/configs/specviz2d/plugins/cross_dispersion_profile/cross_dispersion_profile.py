@@ -68,8 +68,6 @@ class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
 
     plot_available = Bool(False).tag(sync=True)
 
-    top_layer_name = Unicode("").tag(sync=True)
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -87,9 +85,6 @@ class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
         self.hub.subscribe(self, GlobalDisplayUnitChanged,
                            handler=self._on_display_units_changed)
 
-        self.hub.subscribe(self, ViewerVisibleLayersChangedMessage,
-                           handler=self._visible_layer_changed)
-
         # attribute to access computed profile, will be a quantity array
         self._profile = None
 
@@ -104,19 +99,6 @@ class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
         expose = ('dataset', 'pixel', 'y_pixel', 'use_full_width', 'width',
                   'profile')
         return PluginUserApi(self, expose=expose)
-
-    def _visible_layer_changed(self, event={}):
-        """
-        When visible layers are changed, select the top visible layer
-        as dataset to compute profile.
-        """
-        if hasattr(self, "dataset") and self.dataset.selected_obj is not None:
-            v2d = self.app.get_viewer_by_id('specviz2d-0')
-            i = get_top_layer_index(v2d)
-            if i is not None:
-                # the ViewerVisibleLayersChangedMessage is emitted before the
-                # AddDataMessage, so store the correct data label
-                self.top_layer_name = v2d.state.layers[i].layer.label
 
     @observe("dataset_selected")
     def _set_defaults(self, event={}):
