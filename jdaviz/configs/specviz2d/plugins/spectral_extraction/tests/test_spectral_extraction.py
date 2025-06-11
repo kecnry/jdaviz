@@ -294,4 +294,3 @@ def test_spectral_extraction_flux_unit_conversions(specviz2d_helper, mos_spectru
 
         exported_extract = pext.export_extract()
         assert exported_extract.image._unit == specviz2d_helper.app._get_display_unit('flux')
-

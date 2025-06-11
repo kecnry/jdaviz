@@ -7,7 +7,7 @@ from specreduce.tracing import FlatTrace
 from specreduce.utils import measure_cross_dispersion_profile
 from traitlets import Bool, Float, Integer, List, Unicode, observe
 
-from jdaviz.core.events import GlobalDisplayUnitChanged, SnackbarMessage, ViewerVisibleLayersChangedMessage
+from jdaviz.core.events import GlobalDisplayUnitChanged
 from jdaviz.core.marks import PluginLine, PluginScatter
 from jdaviz.core.registries import tray_registry
 from jdaviz.core.template_mixin import (DatasetSelect, PluginTemplateMixin,
