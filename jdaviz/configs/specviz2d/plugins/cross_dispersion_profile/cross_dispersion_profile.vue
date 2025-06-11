@@ -13,7 +13,7 @@
       :selected.sync="dataset_selected"
       :show_if_single_entry="false"
       label="Data"
-      hint="Select the data for photometry."
+      hint="Select the data to compute the profile."
     />
 
     <v-row>

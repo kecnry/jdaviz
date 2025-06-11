@@ -15,7 +15,6 @@ from jdaviz.core.template_mixin import (DatasetSelect, PluginTemplateMixin,
 from jdaviz.core.unit_conversion_utils import (all_flux_unit_conversion_equivs,
                                                flux_conversion_general)
 from jdaviz.core.user_api import PluginUserApi
-from jdaviz.utils import get_top_layer_index
 
 __all__ = ['CrossDispersionProfile']
 
@@ -48,7 +47,7 @@ class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
 
     # pixel on spectral axis to measure profile
     pixel = Integer().tag(sync=True)
-    wav = Float().tag(sync=True)  # corresponding wavelength, if available
+    wav = Float(4.0).tag(sync=True)  # corresponding wavelength, if available
 
     # set maximum values for slider limits
     max_pix = Integer().tag(sync=True)
@@ -123,7 +122,7 @@ class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
             # set appropriate default 'width' if use_full_width=False
             self.width = data.shape[0]
 
-    @observe('pixel', 'sa_display_unit')
+    @observe('pixel')
     def _pixel_to_wav(self, event={}):
         """
         Calculate the corresponding wavelength for ``pixel``, if wcs is present,
@@ -149,13 +148,9 @@ class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
             if self.flux_display_unit != event.unit:
                 self.flux_display_unit = event.unit.to_string()
 
-        if event.axis != 'spectral':
-            if self.sa_display_unit == event.unit:
+        if event.axis == 'spectral':
+            if self.sa_display_unit != event.unit:
                 self.sa_display_unit = event.unit.to_string()
-
-
-        # re-compute profile and update plot to new units
-        self.measure_cross_dispersion_profile(update_plot=True)
 
     @property
     def profile(self):
@@ -196,7 +191,7 @@ class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
 
         return self._marks
 
-    @observe('dataset_selected', 'is_active', 'pixel', 'y_pixel', 'width', 'use_full_width')
+    @observe('dataset_selected', 'is_active', 'pixel', 'y_pixel', 'width', 'use_full_width', 'wav')
     def _pixel_selected_mark(self, event={}):
         """
         Update drawn marks (synced vertical lines in 2d and 1d spectrum viewers,
