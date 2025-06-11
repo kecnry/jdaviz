@@ -293,7 +293,5 @@ def test_spectral_extraction_flux_unit_conversions(specviz2d_helper, mos_spectru
         assert exported_extract_spectrum._unit == specviz2d_helper.app._get_display_unit('flux')
 
         exported_extract = pext.export_extract()
-        try:
-            assert exported_extract.image._unit == specviz2d_helper.app._get_display_unit('flux')
-        except:
-            print('failed, new_flux_unit', new_flux_unit)
+        assert exported_extract.image._unit == specviz2d_helper.app._get_display_unit('flux')
+

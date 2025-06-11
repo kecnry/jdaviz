@@ -8,6 +8,14 @@
     :popout_button="popout_button"
     :scroll_to.sync="scroll_to">
 
+    <plugin-dataset-select
+      :items="dataset_items"
+      :selected.sync="dataset_selected"
+      :show_if_single_entry="false"
+      label="Data"
+      hint="Select the data for photometry."
+    />
+
     <v-row>
       <v-col cols="9" style="padding: 0px">
         <v-slider

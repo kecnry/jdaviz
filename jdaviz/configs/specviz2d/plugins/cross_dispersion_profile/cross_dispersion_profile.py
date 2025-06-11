@@ -169,7 +169,6 @@ class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
             self.flux_display_unit = event.unit.to_string()
 
         if event.axis == 'spectral':
-            self.hub.broadcast(SnackbarMessage(f"spectral changed message recieved", color='error', sender=self))
             if self.sa_display_unit == event.unit:
                 return
             self.sa_display_unit = event.unit.to_string()
@@ -250,7 +249,7 @@ class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
                 self.marks['1d']['pix'].update_xy([self.wav, self.wav], [0, 1])
                 self.marks['1d']['pix'].visible = self.is_active
 
-    @observe('pixel', 'y_pixel', 'is_active', 'width', 'use_full_width')
+    @observe('dataset_selected', 'pixel', 'y_pixel', 'is_active', 'width', 'use_full_width')
     def measure_cross_dispersion_profile(self, update_plot=True):
         """
         Measure the cross-dispersion profile.
