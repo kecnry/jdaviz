@@ -146,17 +146,13 @@ class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
         precision errors.
         """
         if event.axis == 'flux':
-            if self.flux_display_unit == event.unit:
-                return
-            self.flux_display_unit = event.unit.to_string()
+            if self.flux_display_unit != event.unit:
+                self.flux_display_unit = event.unit.to_string()
 
-        if event.axis == 'spectral':
+        if event.axis != 'spectral':
             if self.sa_display_unit == event.unit:
-                return
-            self.sa_display_unit = event.unit.to_string()
+                self.sa_display_unit = event.unit.to_string()
 
-            # convert ``pixel`` to new wavelength unit
-            self._pixel_to_wav()
 
         # re-compute profile and update plot to new units
         self.measure_cross_dispersion_profile(update_plot=True)
