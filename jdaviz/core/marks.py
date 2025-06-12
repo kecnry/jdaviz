@@ -176,7 +176,10 @@ class PluginMark:
     def set_x_unit(self, unit=None):
         if unit is None:
             if not hasattr(self.viewer.state, 'x_display_unit'):
-                if self.viewer.data() and hasattr(self.viewer.data()[0], 'spectral_axis'):
+                if isinstance(self.viewer, ('Spectrum2DViewer', 'MosvizProfile2DView')):
+                    # x-unit of 2d spectrum viewers are always in pixels
+                    unit = u.pix
+                elif self.viewer.data() and hasattr(self.viewer.data()[0], 'spectral_axis'):
                     unit = self.viewer.data()[0].spectral_axis.unit
                 else:
                     return
@@ -193,7 +196,10 @@ class PluginMark:
     def set_y_unit(self, unit=None):
         if unit is None:
             if not hasattr(self.viewer.state, 'y_display_unit'):
-                if self.viewer.data() and hasattr(self.viewer.data()[0], 'flux'):
+                if isinstance(self.viewer, ('Spectrum2DViewer', 'MosvizProfile2DView')):
+                    # y-unit of 2d spectrum viewers are always in pixels
+                    unit = u.pix
+                elif self.viewer.data() and hasattr(self.viewer.data()[0], 'flux'):
                     unit = self.viewer.data()[0].flux.unit
                 else:
                     return
@@ -232,11 +238,18 @@ class PluginMark:
     def _on_global_display_unit_changed(self, msg):
         if not self.auto_update_units:
             return
-        if self.viewer.__class__.__name__ in ['Spectrum1DViewer',
+        unit = msg.unit
+        if (msg.axis in ('spectral', 'spectral_y') and
+                self.viewer.__class__.__name__ in ('Spectrum2DViewer',
+                                                   'MosvizProfile2DView')):
+            # then we want to ignore the change to spectral unit as these viewers
+            # are always in pixel units on the x-axis
+            unit = u.pix
+        if self.viewer.__class__.__name__ in ('Spectrum1DViewer',
                                               'Spectrum2DViewer',
                                               'CubevizProfileView',
                                               'MosvizProfileView',
-                                              'MosvizProfile2DView']:
+                                              'MosvizProfile2DView'):
 
             axis_map = {'spectral': 'x', 'spectral_y': 'y'}
         else:
@@ -249,7 +262,7 @@ class PluginMark:
             if isinstance(scale, LinearScale) and (scale.min, scale.max) == (0, 1):
                 return
 
-            getattr(self, f'set_{axis}_unit')(msg.unit)
+            getattr(self, f'set_{axis}_unit')(unit)
 
     def clear(self):
         self.update_xy([], [])
