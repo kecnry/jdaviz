@@ -47,7 +47,7 @@ class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
 
     # pixel on spectral axis to measure profile
     pixel = Integer().tag(sync=True)
-    wav = Float(4.0).tag(sync=True)  # corresponding wavelength, if available
+    wav = Float(allow_none=True).tag(sync=True)  # corresponding wavelength, if available
 
     # set maximum values for slider limits
     max_pix = Integer().tag(sync=True)
@@ -122,11 +122,12 @@ class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
             # set appropriate default 'width' if use_full_width=False
             self.width = data.shape[0]
 
-    @observe('pixel')
+    @observe('dataset_selected', 'pixel')
     def _pixel_to_wav(self, event={}):
         """
         Calculate the corresponding wavelength for ``pixel``, if wcs is present,
-        when ``pixel`` is changed.
+        when ``pixel`` is changed (or new dataset selected, in case the previous one
+        had a wcs and the new one doesn't or vice versa).
         """
         data = self.dataset.selected_obj
         if data is not None:
@@ -134,6 +135,8 @@ class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
                 wcs = self.dataset.selected_obj.wcs
                 wav = wcs.pixel_to_world(self.pixel)
                 self.wav = wav.to(u.Unit(self.sa_display_unit), u.spectral()).value
+            else:
+                self.wav = None
 
     def _on_display_units_changed(self, event={}):
         """
@@ -276,10 +279,6 @@ class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
     def update_plot(self):
         """Update plugin plot with self.profile."""
 
-        data = self.dataset.selected_obj
-        if data is None:
-            return
-
         x = np.arange(len(self.profile))
 
         if not self.use_full_width:
@@ -292,11 +291,10 @@ class CrossDispersionProfile(PluginTemplateMixin, PlotMixin):
                                size=32)
 
         title = f'Cross dispersion profile for pixel {self.pixel}'
+
         # include wavelength in plot title, if available
-        if hasattr(data, 'wcs'):  # also plot line in spectrum viewer
-            wcs = self.dataset.selected_obj.wcs
-            loc = round(wcs.pixel_to_world(self.pixel).value, 3)
-            title += f' ({loc} {self.sa_display_unit})'
+        if self.wav is not None:
+            title += f' ({round(self.wav, 3)} {self.sa_display_unit})'
         self.plot.figure.title = title
 
         self.plot.figure.axes[1].label = f'Value ({self.flux_display_unit})'
