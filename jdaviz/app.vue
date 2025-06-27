@@ -60,7 +60,7 @@
 
       <v-spacer></v-spacer>
       <v-toolbar-items v-if="config !== 'deconfigged'">
-        <j-tooltip tipid="app-toolbar-popout" span_style="scale: 0.8; margin-left: -4px; margin-right: -4px">
+        <j-tooltip v-if="state.show_toolbar_buttons" tipid="app-toolbar-popout" span_style="scale: 0.8; margin-left: -4px; margin-right: -4px">
           <jupyter-widget :widget="popout_button" ></jupyter-widget>
         </j-tooltip>
         <j-tooltip v-if="state.show_toolbar_buttons" tipid="app-help">
