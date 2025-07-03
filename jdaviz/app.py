@@ -784,6 +784,8 @@ class Application(VuetifyTemplate, HubListener):
         any components are compatible with already loaded data. If so, link
         them so that they can be displayed on the same profile1D plot.
         """
+        if self.config == 'deconfigged':
+            return
         if self.config == 'imviz':  # Imviz does its own thing
             return
         elif not self.auto_link:
