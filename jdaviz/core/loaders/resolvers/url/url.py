@@ -33,7 +33,8 @@ class URLResolver(BaseResolver):
 
     @property
     def is_valid(self):
-        return urlparse(self.url.strip()).scheme in ['http', 'https', 'mast', 'ftp']
+        scheme = urlparse(self.url.strip()).scheme
+        return scheme in ['http', 'https', 'mast', 'ftp', 'jwst', 'hst'] or self.url.lower().startswith('hlsp')
 
     @property
     def default_label(self):

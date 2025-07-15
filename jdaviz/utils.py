@@ -614,6 +614,35 @@ def get_cloud_fits(possible_uri, ext=None, cache=None, local_path=os.curdir, tim
     return possible_uri
 
 
+def download_uri_from_astroquery(uri, **kwargs):
+    # supported input uri format:
+    # * <mission>:<filename.fits> where <mission> should include entire path for HLSPs
+    # * mast:<mission>/.../<filename.fits>
+    if uri.startswith('mast:'):
+        if 'hlsp' in uri.lower():
+            # HLSPs are handled by Observations.download_file
+            return Observations.download_file(uri, **kwargs)
+        # otherwise attempt to parse to pass through MastMissions
+        uri = uri.split(':')[1]
+        mission = uri.split('/')[0]
+        filename = uri.split('/')[-1]
+        uri = f'{mission}/{filename}'
+
+    # uri format: <mission>:<filename>
+    mission, filename = uri.split(':')
+    if mission.startswith('HLSP'):
+        # use Observations.download_file
+        observations_uri = f'mast:{mission}/{filename}'
+        return Observations.download_file(observations_uri, **kwargs)
+    else:
+        # use MastMissions.download_file
+        from astroquery.mast import MastMissions
+        mast = MastMissions
+        mast.mission = mission
+        missions_uri = '_'.join(filename.split('_')[:3])+'/'+filename
+        return mast.download_file(missions_uri, **kwargs)
+
+
 def download_uri_to_path(possible_uri, cache=None, local_path=os.curdir, timeout=None,
                          dryrun=False):
     """
@@ -697,7 +726,7 @@ def download_uri_to_path(possible_uri, cache=None, local_path=os.curdir, timeout
         cache = True
         cache_warning = True
 
-    if parsed_uri.scheme.lower() == 'mast':
+    if parsed_uri.scheme.lower() in ('mast', 'jwst', 'hst') or possible_uri.lower().startswith('hlsp'):
         if cache_warning:
             warnings.warn(cache_none_msg, UserWarning)
 
@@ -709,7 +738,7 @@ def download_uri_to_path(possible_uri, cache=None, local_path=os.curdir, timeout
 
         if not dryrun:
             with conf.set_temp('timeout', timeout):
-                (status, msg, url) = Observations.download_file(
+                (status, msg, url) = download_uri_from_astroquery(
                     possible_uri, cache=cache, local_path=local_path
                 )
         else:
