@@ -336,7 +336,6 @@ class BaseResolver(PluginTemplateMixin):
         else:
             self.importer_widget = "IPY_MODEL_" + self.importer.model_id
             self.valid_import_formats = ''
-            self.import_disabled = self.importer.import_disabled
 
     def close_in_tray(self, close_sidebar=False):
         """
