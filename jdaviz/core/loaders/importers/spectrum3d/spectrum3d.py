@@ -253,6 +253,10 @@ class Spectrum3DImporter(BaseImporterToDataCollection, HDUListToSpectrumMixin):
         return 3
 
     @property
+    def default_spectral_axis_index(self):
+        return 0
+
+    @property
     def output(self):
         sp = self.spectrum
 

@@ -64,6 +64,10 @@ class HDUListToSpectrumMixin(VuetifyTemplate, HubListener):
     def supported_flux_ndim(self):
         return 2
 
+    @property
+    def default_spectral_axis_index(self):
+        return 1
+
     def hdu_is_valid_flux(self, item):
         """
         Check if the HDU is valid to be imported for the flux in a Spectrum.
@@ -151,7 +155,7 @@ class HDUListToSpectrumMixin(VuetifyTemplate, HubListener):
         else:
             mask_data = None
 
-        if data.shape[0] > data.shape[1]:
+        if self.supported_flux_ndim == 2 and data.shape[0] > data.shape[1]:
             data = data.T
             if unc_data is not None:
                 unc_data = unc_data.T
@@ -187,7 +191,7 @@ class HDUListToSpectrumMixin(VuetifyTemplate, HubListener):
                     wcs = None
             return Spectrum(flux=data * data_unit, uncertainty=unc,
                             mask=mask_data, meta=metadata, wcs=wcs,
-                            spectral_axis_index=1)
+                            spectral_axis_index=self.default_spectral_axis_index)
         except ValueError:
             # In some cases, the above call to Spectrum will fail if no
             # spectral axis is found in the WCS. Even without a spectral axis,
