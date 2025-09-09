@@ -448,7 +448,7 @@ class ConfigHelper(HubListener):
             self.app.layout.height = height
             self.app.state.settings['context']['notebook']['max_height'] = height
 
-        if self.app.config in ('specviz', 'specviz2d', 'imviz', 'cubeviz', 'lcviz') or self.app.state.dev_loaders:  # noqa
+        if self.app.config in CONFIGS_WITH_LOADERS or self.app.state.dev_loaders:  # noqa
             if not len(self.viewers) and not len(self.app.state.drawer_content):
                 self.app.state.drawer_content = 'loaders'
             else:
