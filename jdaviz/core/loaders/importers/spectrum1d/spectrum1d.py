@@ -16,14 +16,15 @@ __all__ = ['SpectrumImporter']
 
 
 def asdf_is_roman_ext(item):
-    return all(k in item for k in ["unit_wl", "unit_flux"])
+    return all(k in item.get('obj').keys() for k in ["wl", "flux"])
+
 
 @loader_importer_registry('1D Spectrum')
 class SpectrumImporter(BaseImporterToDataCollection):
     template_file = __file__, "../to_dc_with_label.vue"
 
     # HDUList-specific options
-    input_hasexts = Bool(False).tag(sync=True)
+    input_has_extensions = Bool(False).tag(sync=True)
     extension_items = List().tag(sync=True)
     extension_selected = Unicode().tag(sync=True)
 
@@ -38,8 +39,8 @@ class SpectrumImporter(BaseImporterToDataCollection):
         else:
             self.data_label_default = '1D Spectrum'
 
-        self.input_hasexts = isinstance(self.input, AsdfFile)
-        if self.input_hasexts:
+        self.input_has_extensions = isinstance(self.input, AsdfFile)
+        if self.input_has_extensions:
             ext_options = [{'label': f"{ind}: {k}",
                             'name': k,
                             'name_ver': k,
@@ -63,13 +64,16 @@ class SpectrumImporter(BaseImporterToDataCollection):
             # cubeviz allowed for cubeviz.specviz.load_data support
             # NOTE: temporary during deconfig process
             return False
+        if self.input_has_extensions and not len(self.extension.choices):
+            return False
         if isinstance(self.input, Spectrum) and self.input.flux.ndim == 1:
             return True
         if isinstance(self.input, AsdfFile):
-            # Roman: valid as long as there is at least one valid extension
+            # Roman: valid as long as there is at least one valid extension and units in metadata
             if ('roman' in self.input.tree and
-                    len([item for item in self.input['roman']['data']
-                         if asdf_is_roman_ext(item)])):
+                    all(k in self.input['roman'].get('meta', {}) for k in ["unit_wl", "unit_flux"]) and
+                    len([obj for obj in self.input['roman'].get('data', {}).values()
+                         if asdf_is_roman_ext({'obj': obj})])):
                 return True
         return False
 
@@ -81,7 +85,7 @@ class SpectrumImporter(BaseImporterToDataCollection):
         # set uncerts. to None if they are all nan/inf, and display a warning message.
         data = self.input
 
-        if self.input_hasexts:
+        if self.input_has_extensions:
             # for now assume Roman ASDF
             def _to_unit(x):
                 """Coerce str/bytes/Unit to astropy.units.Unit."""
