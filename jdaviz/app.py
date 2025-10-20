@@ -297,6 +297,7 @@ class ApplicationState(State):
     # catalogs_in_dc PRs (include in changelog when removing the dev-flag):
     # https://github.com/spacetelescope/jdaviz/pull/3761
     # https://github.com/spacetelescope/jdaviz/pull/3777
+    # https://github.com/spacetelescope/jdaviz/pull/3778
     # https://github.com/spacetelescope/jdaviz/pull/3799
     # https://github.com/spacetelescope/jdaviz/pull/3814
     catalogs_in_dc = CallbackProperty(
@@ -346,6 +347,8 @@ class Application(VuetifyTemplate, HubListener):
     state = GlueState().tag(sync=True)
 
     template_file = __file__, "app.vue"
+
+    existing_data_in_dc = List([]).tag(sync=True)
 
     loading = Bool(False).tag(sync=True)
     config = Unicode("").tag(sync=True)
@@ -689,7 +692,7 @@ class Application(VuetifyTemplate, HubListener):
             return
 
         if viewer_id is None:
-            viewer = self._jdaviz_helper.default_viewer._obj
+            viewer = self._jdaviz_helper.default_viewer._obj.glue_viewer
         else:
             viewer = self.get_viewer(viewer_id)
 
@@ -1884,8 +1887,9 @@ class Application(VuetifyTemplate, HubListener):
         [data] = [x for x in self.data_collection if x.label == data_label]
 
         viewer.remove_data(data)
-        viewer._layers_with_defaults_applied = [layer_info for layer_info in viewer._layers_with_defaults_applied  # noqa
-                                                if layer_info['data_label'] != data.label]  # noqa
+        viewer._layers_with_defaults_applied = [layer_info for layer_info
+                                                in getattr(viewer, '_layers_with_defaults_applied', [])  # noqa
+                                                if layer_info['data_label'] != data.label]
 
         remove_data_message = RemoveDataMessage(data, viewer,
                                                 viewer_id=viewer_id,
@@ -2113,6 +2117,7 @@ class Application(VuetifyTemplate, HubListener):
                     result = find_viewer_item(stack_item.get('children'))
                     if result is not None:
                         return result
+            return None
 
         viewer_item = find_viewer_item(self.state.stack_items)
 
@@ -2678,6 +2683,35 @@ class Application(VuetifyTemplate, HubListener):
         return next((x for x in self.state.data_items
                      if x['id'] == data_id), None)
 
+    def _update_existing_data_in_dc(self, msg, data_added):
+        """
+        Update the ``existing_data_in_dc`` state list to reflect
+        whether data with a given label is in the internal ``DataCollection``.
+
+        Parameters
+        ----------
+        msg : `~glue.core.message.DataCollectionAddMessage` or
+              `~glue.core.message.DataCollectionDeleteMessage`
+            The Glue data collection add or delete message containing
+            information about the new or removed data.
+        data_added : bool
+            Whether data was added or removed from the ``DataCollection``.
+        """
+        data_hash = msg.data.meta.get('_data_hash', None)
+        if data_hash is None:
+            return
+        # Need to make a copy to ensure traitlets notices the change
+        new_existing_data_in_dc = self.existing_data_in_dc.copy()
+
+        if data_added:
+            if data_hash not in new_existing_data_in_dc:
+                new_existing_data_in_dc.append(data_hash)
+        else:
+            if data_hash in new_existing_data_in_dc:
+                new_existing_data_in_dc.remove(data_hash)
+
+        self.existing_data_in_dc = new_existing_data_in_dc
+
     def _on_data_added(self, msg):
         """
         Callback for when data is added to the internal ``DataCollection``.
@@ -2696,6 +2730,8 @@ class Application(VuetifyTemplate, HubListener):
         data_item = self._create_data_item(msg.data)
         self.state.data_items.append(data_item)
         self._reserved_labels.add(msg.data.label)
+
+        self._update_existing_data_in_dc(msg, data_added=True)
 
     def _clear_object_cache(self, data_label=None):
         if data_label is None:
@@ -2721,6 +2757,8 @@ class Application(VuetifyTemplate, HubListener):
                 self.state.data_items.remove(data_item)
 
         self._clear_object_cache(msg.data.label)
+
+        self._update_existing_data_in_dc(msg, data_added=False)
 
     def _create_data_item(self, data):
         ndims = len(data.shape)
@@ -2874,19 +2912,19 @@ class Application(VuetifyTemplate, HubListener):
         reference_data_label = getattr(reference_data, 'label', None)
         linked_by_wcs = getattr(viewer.state, 'linked_by_wcs', False)
 
+        from jdaviz.configs.default.plugins.viewers import JdavizViewerWindow
+        viewer_container = JdavizViewerWindow(viewer, app=self, reference=reference, name=name)
+
         return {
             'id': vid,
+            'reference': reference or name or vid,
             'name': name or vid,
-            'widget': "IPY_MODEL_" + viewer.figure_widget.model_id,
-            'toolbar': "IPY_MODEL_" + viewer.toolbar.model_id if viewer.toolbar else '',  # noqa
-            'data_menu': 'IPY_MODEL_' + viewer._data_menu.model_id if hasattr(viewer, '_data_menu') else '',  # noqa
+            'widget': "IPY_MODEL_" + viewer_container.model_id,
             'api_methods': viewer._data_menu.api_methods if hasattr(viewer, '_data_menu') else [],
             'reference_data_label': reference_data_label,
             'canvas_angle': 0,  # canvas rotation clockwise rotation angle in deg
             'canvas_flip_horizontal': False,  # canvas rotation horizontal flip
-            'config': self.config,  # give viewer access to app config/layout
             'collapse': True,
-            'reference': reference or name or vid,
             'linked_by_wcs': linked_by_wcs,
         }
 
@@ -2936,7 +2974,7 @@ class Application(VuetifyTemplate, HubListener):
                 # adopt "linked_by_wcs" from the first (assuming all are the same)
                 # NOTE: deleting the default viewer is forbidden both by API and UI, but if
                 # for some reason that was the case here, linked_by_wcs will default to False
-                linked_by_wcs = self._jdaviz_helper.default_viewer._obj.state.linked_by_wcs
+                linked_by_wcs = self._jdaviz_helper.default_viewer._obj.glue_viewer.state.linked_by_wcs  # noqa
             else:
                 linked_by_wcs = False
             viewer.state.linked_by_wcs = linked_by_wcs
@@ -2957,7 +2995,7 @@ class Application(VuetifyTemplate, HubListener):
             # NOTE: if ever extending image rotation beyond imviz or adding non-image viewers
             # to imviz: this currently assumes that the helper has a default_viewer and that is an
             # image viewer
-            ref_data = self._jdaviz_helper.default_viewer._obj.state.reference_data
+            ref_data = self._jdaviz_helper.default_viewer._obj.glue_viewer.state.reference_data
             new_viewer_item['reference_data_label'] = getattr(ref_data, 'label', None)
 
             if hasattr(viewer, 'reference'):

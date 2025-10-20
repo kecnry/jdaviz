@@ -2,7 +2,8 @@
   <v-container>
     <plugin-select
       v-if="!disable_dropdown"
-      :items="sources_items.map(i => i.label)"
+      :items="sources_items"
+      :exists_in_dc="existing_data_in_dc"
       :selected.sync="sources_selected"
       :show_if_single_entry="true"
       :multiselect="sources_multiselect"
@@ -63,7 +64,7 @@
         :api_hints_enabled="api_hints_enabled"
         @click="import_clicked">
         {{ api_hints_enabled ?
-          'ldr.importer()'
+          'ldr.load()'
           :
           'Import'
         }}

@@ -4,12 +4,23 @@
 New Features
 ------------
 
-- Add check for valid model fitting equation operators. [#3818]
+- Loaders now all support "observation" and "file" tables, allowing choosing which file to download
+  and import from an astroquery or MAST search. [#3769]
 
 - Change parallelization framework for better performance and flexibility. [#3806]
 
 - Plugin-specific viewer tools (footprint, catalogs, line lists, line analysis) now have a
   toggle button in the plugin UI to enable/disable a custom toolbar specific to that context. [#3812]
+
+- Data selected for load in the UI is now checked against existing data for duplicates
+  and the user warned. [#3813]
+
+- Add check for valid model fitting equation operators. [#3818]
+
+- Viewers now support being popped out into separate window or sending to any sidecar location via `.show()`
+  API. [#3821]
+
+- Added descriptive hints for toggleable model fitter parameters in the Model Fitting plugin. [#3831]
 
 Cubeviz
 ^^^^^^^
@@ -18,6 +29,8 @@ Imviz
 ^^^^^
 
 - Loading footprints from files/API is now done through the loaders infrastructure. [#3790]
+
+- Virtual Observatory (VO) plugin functionality is now available through the loaders infrastructure. [#3769]
 
 Mosviz
 ^^^^^^
@@ -32,6 +45,9 @@ Specviz2d
 
 API Changes
 -----------
+
+- Adds `ldr.load()` method to the loaders API and suggests using this in API hints over `ldr.importer()`
+  (which will continue to exist). [#3832]
 
 Cubeviz
 ^^^^^^^
@@ -71,11 +87,19 @@ Specviz2d
 Other Changes and Additions
 ---------------------------
 
+- Add rotation keyword argument to `set_viewport` and `get_viewport` methods to expand the Astro Image Display API (AIDA) [#3759]
+
+- Scatter and histogram viewer support in the deconfigged app instance. [#3778, #3833]
+
 4.4.2 (unreleased)
 ==================
 
+- Fixes traceback raised by the stretch histogram in plot options when entering multiselect mode. [#3825]
+
 Bug Fixes
 ---------
+
+- Add support for all valid astropy table write formats. [#3822]
 
 Cubeviz
 ^^^^^^^

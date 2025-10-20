@@ -175,3 +175,55 @@ def test_invalid(imviz_helper, tmp_path):
     ldr.object = fits.ImageHDU(np.ones((32, 25)))
     assert 'Image' in ldr.format.choices
     assert 'Catalog' not in ldr.format.choices
+
+
+def test_scatter_viewer(deconfigged_helper):
+    deconfigged_helper.app.state.catalogs_in_dc = True
+
+    ldr = deconfigged_helper.loaders['object']
+    ldr.object = _make_catalog(with_units=True)
+    ldr.format = 'Catalog'
+
+    assert 'Scatter' in ldr.importer.viewer.create_new.choices
+    ldr.importer.viewer.create_new = 'Scatter'
+    ldr.importer()
+
+    assert 'Scatter' in deconfigged_helper.viewers
+    assert 'Scatter' in deconfigged_helper.new_viewers
+
+    nv = deconfigged_helper.new_viewers['Scatter']
+    nv.dataset = ['Catalog']
+    nv.viewer_label = 'Added Scatter Viewer'
+    nv()
+
+    assert 'Added Scatter Viewer' in deconfigged_helper.viewers
+
+
+def test_histogram_viewer(deconfigged_helper):
+    deconfigged_helper.app.state.catalogs_in_dc = True
+
+    ldr = deconfigged_helper.loaders['object']
+    ldr.object = _make_catalog(with_units=True)
+    ldr.format = 'Catalog'
+    ldr.importer.col_other = ['flux']
+
+    assert 'Histogram' in ldr.importer.viewer.create_new.choices
+    ldr.importer.viewer.create_new = 'Histogram'
+    ldr.importer()
+
+    assert 'Histogram' in deconfigged_helper.viewers
+    assert 'Histogram' in deconfigged_helper.new_viewers
+
+    nv = deconfigged_helper.new_viewers['Histogram']
+    nv.dataset = ['Catalog']
+    nv.xatt = 'flux'
+    nv.viewer_label = 'Added Histogram Viewer'
+    nv()
+
+    assert 'Added Histogram Viewer' in deconfigged_helper.viewers
+
+    po = deconfigged_helper.plugins['Plot Options']
+    po.viewer = 'Added Histogram Viewer'
+    po.xatt = 'Right Ascension'
+
+    assert str(deconfigged_helper.viewers['Histogram']._obj.glue_viewer.state.x_att) == 'Right Ascension'  # noqa
