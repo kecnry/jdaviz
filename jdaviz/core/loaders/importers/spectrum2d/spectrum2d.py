@@ -81,8 +81,9 @@ class Spectrum2DImporter(BaseImporterToDataCollection, SpectrumInputExtensionsMi
     @property
     def user_api(self):
         expose = ['auto_extract', 'ext_data_label', 'ext_viewer']
-        if self.input_has_extensions:
-            expose += ['extension', 'unc_extension']
+        for extension in ('extension', 'unc_extension', 'mask_extension'):
+            if len(getattr(self, extension).choices):
+                expose += [extension]
         return ImporterUserApi(self, expose)
 
     @property
@@ -105,15 +106,6 @@ class Spectrum2DImporter(BaseImporterToDataCollection, SpectrumInputExtensionsMi
     @observe('data_label_value')
     def _data_label_changed(self, msg={}):
         self.ext_data_label_default = f"{self.data_label_value} (auto-ext)"
-
-    @property
-    def output(self):
-        if not self.input_has_extensions:
-            return self.input
-        return self.spectrum
-
-    def assign_component_type(self, comp_id, comp, units, physical_type):
-        return _spectrum_assign_component_type(comp_id, comp, units, physical_type)
 
     def __call__(self):
         # get a copy of both of these before additional data entries changes defaults
