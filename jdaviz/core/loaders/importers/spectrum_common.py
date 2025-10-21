@@ -15,7 +15,8 @@ from jdaviz.core.unit_conversion_utils import check_if_unit_is_per_solid_angle
 from jdaviz.core.custom_units_and_equivs import PIX2, _eqv_flux_to_sb_pixel
 from jdaviz.utils import (standardize_metadata,
                           PRIHDR_KEY,
-                          SPECTRAL_AXIS_COMP_LABELS)
+                          SPECTRAL_AXIS_COMP_LABELS,
+                          _get_celestial_wcs)
 
 __all__ = ['SpectrumInputExtensionsMixin', '_spectrum_assign_component_type']
 
@@ -142,10 +143,6 @@ class SpectrumInputExtensionsMixin(VuetifyTemplate, HubListener):
         return (len(getattr(hdu, 'shape', [])) == self.supported_flux_ndim
                 and hdu.header.get('EXTNAME', '') == 'MASK')
 
-    def _get_celestial_wcs(self, wcs):
-        """ If `wcs` has a celestial component return that, otherwise return None """
-        return wcs.celestial if hasattr(wcs, 'celestial') else None
-
     @cached_property
     def spectrum(self):
         if not self.input_has_extensions:
@@ -159,8 +156,26 @@ class SpectrumInputExtensionsMixin(VuetifyTemplate, HubListener):
         metadata = standardize_metadata(header)
         if hdu.name != 'PRIMARY' and 'PRIMARY' in hdulist:
             metadata[PRIHDR_KEY] = standardize_metadata(hdulist[0].header)
-        wcs = WCS(header, hdulist)
-        print('!!!!!!!!!!!!!!!!!!!', self.extension.selected)
+
+        # Check for data types that have a GWCS stored in ASDF
+        telescop = metadata[PRIHDR_KEY].get('TELESCOP', '').lower()
+        exptype = metadata[PRIHDR_KEY].get('EXP_TYPE', '').lower()
+        # NOTE: Alerted to deprecation of FILETYPE keyword from pipeline on 2022-07-08
+        # Kept for posterity in for data processed prior to this date. Use EXP_TYPE instead
+        filetype = metadata[PRIHDR_KEY].get('FILETYPE', '').lower()
+        if telescop == 'jwst' and ('ifu' in exptype or
+                                   'mrs' in exptype or
+                                   filetype == '3d ifu cube'):
+            from stdatamodels import asdf_in_fits
+            tree = asdf_in_fits.open(hdulist).tree
+            if 'meta' in tree and 'wcs' in tree['meta']:
+                wcs = tree["meta"]["wcs"]
+                if isinstance(wcs, list):
+                    wcs = wcs[0]
+            else:
+                wcs = None
+        else:
+            wcs = WCS(header, hdulist)
 
         try:
             data_unit = u.Unit(header['BUNIT'])
@@ -184,11 +199,10 @@ class SpectrumInputExtensionsMixin(VuetifyTemplate, HubListener):
                 unc_data = unc_data.T
             if mask_data is not None:
                 mask_data = mask_data.T
+            wcs = wcs.swapaxes(0, 1)
             self.app.hub.broadcast(SnackbarMessage(
                 f"Transposed input data to {data.shape}",
                 sender=self, color="warning"))
-        if wcs.array_shape[0] > wcs.array_shape[1]:
-            wcs = wcs.swapaxes(0, 1)
 
         if unc_data is not None:
             unc = StdDevUncertainty(unc_data * data_unit)
@@ -196,37 +210,20 @@ class SpectrumInputExtensionsMixin(VuetifyTemplate, HubListener):
             unc = None
 
         try:
-            if wcs.world_axis_physical_types == [None, None]:
-                # This may be a JWST file with WCS stored in ASDF
-                if 'ASDF' in hdulist:
-                    try:
-                        from stdatamodels import asdf_in_fits
-                        tree = asdf_in_fits.open(hdulist).tree
-                        if 'meta' in tree and 'wcs' in tree['meta']:
-                            wcs = tree["meta"]["wcs"]
-                            if isinstance(wcs, list):
-                                wcs = wcs[0]
-                        else:
-                            wcs = None
-                    except ValueError:
-                        wcs = None
-                else:
-                    wcs = None
             sc = Spectrum(flux=data * data_unit, uncertainty=unc,
-                          mask=mask_data, meta=metadata, wcs=wcs,
-                          spectral_axis_index=self.default_spectral_axis_index)
+                          mask=mask_data, meta=metadata, wcs=wcs)
         except ValueError:
             # In some cases, the above call to Spectrum will fail if no
             # spectral axis is found in the WCS. Even without a spectral axis,
             # the Spectrum.read parser may work, so we try that next.
             # If that also fails, then drop the WCS.
             try:
-                sc = Spectrum.read(self._resolver())
+                sc = Spectrum.read(self._parser.input)
             except Exception:
                 # specutils.Spectrum reader would fail, so use no WCS
                 sc = Spectrum(
-                    flux=data * data_unit, uncertainty=unc,
-                    meta=metadata)
+                        flux=data * data_unit, uncertainty=unc,
+                        meta=metadata, spectral_axis_index=self.default_spectral_axis_index)
             else:
                 # raising an error here will consider this parser as non-valid
                 # so that specutils.Spectrum parser is preferred
@@ -272,10 +269,13 @@ class SpectrumInputExtensionsMixin(VuetifyTemplate, HubListener):
         else:  # Convert both
             new_sc = sc.with_spectral_axis_and_flux_units(
                 target_wave_unit, target_flux_unit, flux_equivalencies=_eqv_flux_to_sb_pixel())
-        # TODO: Seems to be problem area
         if target_wave_unit is not None:
-            new_sc.meta['_orig_spec'] = sc  # Need this for later
-        if self._get_celestial_wcs(sc.wcs) is not None:
-            new_sc.meta['_orig_spatial_wcs'] = self._get_celestial_wcs(sc.wcs)
+            new_sc.meta['_orig_spec'] = sc
+        # Since we create a new Spectrum, we need to copy over any original WCS info
+        # since the WCS will be replaced by a SpectralGWCS object instead of the original
+        # astropy.wcs.WCS object.
+        # This is needed for the subset tools to work properly.
+        if _get_celestial_wcs(sc.wcs) is not None:
+            new_sc.meta['_orig_spatial_wcs'] = _get_celestial_wcs(sc.wcs)
 
         return new_sc
