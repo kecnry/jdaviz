@@ -76,6 +76,8 @@ class SimpleAperturePhotometry(PluginTemplateMixin, ApertureSubsetSelectMixin,
         ``multiselect=False``
     * ``table`` (:class:`~jdaviz.core.template_mixin.Table`):
         Table with photometry results.
+    * ``cube_slice``
+        Current slice wavelength being used for aperture photometry (cubes only, read-only).
     """
     template_file = __file__, "aper_phot_simple.vue"
     uses_active_status = Bool(True).tag(sync=True)
@@ -194,7 +196,7 @@ class SimpleAperturePhotometry(PluginTemplateMixin, ApertureSubsetSelectMixin,
                   'calculate_photometry', 'unpack_batch_options',
                   'calculate_batch_photometry', 'table', 'clear_table',
                   'export_table', 'fitted_models', 'current_plot_type',
-                  'fit_radial_profile', 'plot')
+                  'fit_radial_profile', 'plot', 'cube_slice')
 
         return PluginUserApi(self, expose=expose)
 
