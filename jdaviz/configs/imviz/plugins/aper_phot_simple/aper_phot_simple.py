@@ -77,7 +77,7 @@ class SimpleAperturePhotometry(PluginTemplateMixin, ApertureSubsetSelectMixin,
     * ``table`` (:class:`~jdaviz.core.template_mixin.Table`):
         Table with photometry results.
     * ``cube_slice``
-        Current slice wavelength being used for aperture photometry (cubes only, read-only).
+      Current slice wavelength being used for aperture photometry (cubes only, read-only).
     """
     template_file = __file__, "aper_phot_simple.vue"
     uses_active_status = Bool(True).tag(sync=True)
