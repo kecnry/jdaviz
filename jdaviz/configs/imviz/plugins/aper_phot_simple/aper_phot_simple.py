@@ -196,9 +196,9 @@ class SimpleAperturePhotometry(PluginTemplateMixin, ApertureSubsetSelectMixin,
                   'calculate_photometry', 'unpack_batch_options',
                   'calculate_batch_photometry', 'table', 'clear_table',
                   'export_table', 'fitted_models', 'current_plot_type',
-                  'fit_radial_profile', 'plot', 'cube_slice')
+                  'fit_radial_profile', 'plot')
 
-        return PluginUserApi(self, expose=expose)
+        return PluginUserApi(self, expose=expose, readonly=('cube_slice',))
 
     @property
     def fitted_models(self):
