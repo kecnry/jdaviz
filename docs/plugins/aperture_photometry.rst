@@ -96,9 +96,11 @@ The following interactive demo illustrates the typical workflow for using the Ap
 .. wireframe-demo::
    :disabled-tabs: loaders save settings info subsets
    :legend-entries: Image 1, Image 2, Subset 1
-   :sidebar-content: plugins
+   :sidebar-id: plugins
+   :sidebar-content: <h3>Aperture Photometry</h3><label>Data:</label><select id="data-select"><option>Image 1</option><option>Image 2</option></select>
    :show-footer: false
    :auto-cycle: true
+   :cycle-steps: click:plugins;select:data-select:1;select:data-select:0
 
 Opening the Plugin
 ------------------

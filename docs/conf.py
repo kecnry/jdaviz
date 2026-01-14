@@ -1195,10 +1195,11 @@ class WireframeDemoDirective(SphinxDirective):
         'disabled-tabs': str,
         'show-footer': str,
         'legend-entries': str,
+        'sidebar-id': str,
         'sidebar-content': str,
         'viewer-content': str,
         'auto-cycle': str,
-        'cycle-script': str,
+        'cycle-steps': str,
     }
     
     def run(self):
@@ -1212,10 +1213,11 @@ class WireframeDemoDirective(SphinxDirective):
         disabled_tabs = self.options.get('disabled-tabs', '').split()
         show_footer = self.options.get('show-footer', 'true').lower() == 'true'
         legend_entries = [e.strip() for e in self.options.get('legend-entries', '').split(',') if e.strip()]
+        sidebar_id = self.options.get('sidebar-id', '')
         sidebar_content = self.options.get('sidebar-content', '')
         viewer_content = self.options.get('viewer-content', '')
         auto_cycle = self.options.get('auto-cycle', 'false').lower() == 'true'
-        cycle_script = self.options.get('cycle-script', '')
+        cycle_steps_raw = self.options.get('cycle-steps', '')
         
         # Get custom sidebar content from directive body
         custom_sidebar_html = ''
@@ -1537,15 +1539,9 @@ html[data-theme="light"] #{wireframe_id} .wireframe-demo-container {{
         sidebar_html = '<div class="wireframe-sidebar" id="' + wireframe_id + '-sidebar"><div class="wireframe-sidebar-body"><div class="wireframe-sidebar-content">'
         if custom_sidebar_html:
             sidebar_html += custom_sidebar_html
-        elif sidebar_content == 'plugins':
-            sidebar_html += '''
-                <h3>Aperture Photometry</h3>
-                <label>Data:</label>
-                <select id="''' + wireframe_id + '''-data-select">
-                    <option>Image 1</option>
-                    <option>Image 2</option>
-                </select>
-            '''
+        elif sidebar_content:
+            # Use provided HTML content directly
+            sidebar_html += sidebar_content
         else:
             sidebar_html += '<p>Click toolbar icons to view sidebar content</p>'
         
@@ -1598,7 +1594,16 @@ html[data-theme="light"] #{wireframe_id} .wireframe-demo-container {{
         # Add JavaScript for interactivity with icon SVGs
         html_parts.append(f'''
 <script>
-(function() {{
+// Wait for DOM to be fully loaded
+if (document.readyState === 'loading') {{
+    document.addEventListener('DOMContentLoaded', function() {{
+        initWireframe{wireframe_id.replace('-', '')}();
+    }});
+}} else {{
+    initWireframe{wireframe_id.replace('-', '')}();
+}}
+
+function initWireframe{wireframe_id.replace('-', '')}() {{
     var wireframeId = '{wireframe_id}';
     var container = document.getElementById(wireframeId);
     var sidebar = document.getElementById(wireframeId + '-sidebar');
@@ -1641,8 +1646,7 @@ html[data-theme="light"] #{wireframe_id} .wireframe-demo-container {{
     if (cycleIconRestart) cycleIconRestart.style.backgroundImage = iconSvgs['restart'];
     
     // Show initial sidebar
-    {'sidebar.classList.add("visible"); currentSidebar = "' + sidebar_content + '";' if sidebar_content else ''}
-    
+    // Show initial sidebar\n    
     // Icon click handlers
     icons.forEach(function(icon) {{
         icon.addEventListener('click', function() {{
@@ -1721,7 +1725,7 @@ html[data-theme="light"] #{wireframe_id} .wireframe-demo-container {{
     }}
     
     {cycle_script}
-}})();
+}}
 </script>
 ''')
         
