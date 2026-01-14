@@ -91,6 +91,15 @@ Limitations
 UI Access
 =========
 
+The following interactive demo illustrates the typical workflow for using the Aperture Photometry plugin:
+
+.. wireframe-demo::
+   :disabled-tabs: loaders save settings info subsets
+   :legend-entries: Image 1, Image 2, Subset 1
+   :sidebar-content: plugins
+   :show-footer: false
+   :auto-cycle: true
+
 Opening the Plugin
 ------------------
 

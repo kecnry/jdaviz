@@ -1165,8 +1165,389 @@ class PluginApiReferencesDirective(SphinxDirective):
             return [error_node]
 
 
+class WireframeDemoDirective(SphinxDirective):
+    """
+    Create an interactive wireframe demo that can be embedded in RST files.
+    
+    This directive creates a wireframe similar to the one on the landing page,
+    but with customization options for demonstration purposes.
+    
+    Options:
+        :disabled-tabs: Space-separated list of tab IDs to disable (e.g., "loaders save")
+        :show-footer: Boolean to show/hide the "learn more" footer (default: true)
+        :legend-entries: Comma-separated list of legend entries (e.g., "Image 1, Image 2, Subset 1")
+        :sidebar-content: ID of sidebar to show by default
+        :viewer-content: Custom content for viewer area
+        :auto-cycle: Boolean to enable auto-cycling through sidebars (default: false)
+        :cycle-script: Custom JavaScript for animation cycling
+    
+    Example::
+    
+        .. wireframe-demo::
+           :disabled-tabs: loaders save settings
+           :legend-entries: Image 1, Image 2, Subset 1
+           :sidebar-content: plugins
+           :show-footer: false
+    """
+    
+    has_content = True
+    option_spec = {
+        'disabled-tabs': str,
+        'show-footer': str,
+        'legend-entries': str,
+        'sidebar-content': str,
+        'viewer-content': str,
+        'auto-cycle': str,
+        'cycle-script': str,
+    }
+    
+    def run(self):
+        import json
+        import uuid
+        
+        # Generate unique ID for this wireframe instance
+        wireframe_id = f"wireframe-{uuid.uuid4().hex[:8]}"
+        
+        # Parse options
+        disabled_tabs = self.options.get('disabled-tabs', '').split()
+        show_footer = self.options.get('show-footer', 'true').lower() == 'true'
+        legend_entries = [e.strip() for e in self.options.get('legend-entries', '').split(',') if e.strip()]
+        sidebar_content = self.options.get('sidebar-content', '')
+        viewer_content = self.options.get('viewer-content', '')
+        auto_cycle = self.options.get('auto-cycle', 'false').lower() == 'true'
+        cycle_script = self.options.get('cycle-script', '')
+        
+        # Get custom sidebar content from directive body
+        custom_sidebar_html = ''
+        if self.content:
+            from docutils.core import publish_parts
+            custom_sidebar_html = publish_parts(
+                '\n'.join(self.content),
+                writer_name='html'
+            )['body']
+        
+        # Build the HTML for the wireframe
+        html_parts = []
+        
+        # Add styles (reusing from index.html but scoped to this wireframe)
+        html_parts.append(f'''
+<style>
+/* Wireframe Demo Styles - Scoped to #{wireframe_id} */
+#{wireframe_id} .wireframe-demo-container {{
+    background: var(--wireframe-bg, #003B4D);
+    border: 2px solid var(--wireframe-border, rgba(255, 255, 255, 0.3));
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+    position: relative;
+    margin: 40px 0;
+}}
+
+html[data-theme="light"] #{wireframe_id} .wireframe-demo-container {{
+    background: #ffffff;
+    border-color: rgba(0, 59, 77, 0.2);
+}}
+
+#{wireframe_id} .wireframe-toolbar {{
+    background: #003B4D;
+    padding: 0;
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    border-bottom: 2px solid var(--wireframe-border, rgba(255, 255, 255, 0.3));
+    height: 72px;
+}}
+
+#{wireframe_id} .wireframe-toolbar-icon {{
+    width: 48px;
+    height: 100%;
+    background-color: transparent;
+    background-size: 24px 24px;
+    background-position: center;
+    background-repeat: no-repeat;
+    border: none;
+    border-radius: 0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 1;
+}}
+
+#{wireframe_id} .wireframe-toolbar-icon.disabled {{
+    opacity: 0.3;
+    cursor: not-allowed;
+    pointer-events: none;
+}}
+
+#{wireframe_id} .wireframe-toolbar-icon:not(.disabled):hover {{
+    background-color: rgba(0, 125, 164, 0.3);
+}}
+
+#{wireframe_id} .wireframe-toolbar-icon.active {{
+    background-color: var(--button-hover, #C75109);
+}}
+
+#{wireframe_id} .wireframe-toolbar-divider {{
+    width: 12px;
+    height: 100%;
+    background: transparent;
+    position: relative;
+}}
+
+#{wireframe_id} .wireframe-toolbar-divider::after {{
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 20%;
+    bottom: 20%;
+    width: 1px;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateX(-50%);
+}}
+
+#{wireframe_id} .wireframe-toolbar-spacer {{
+    flex: 1;
+}}
+
+#{wireframe_id} .wireframe-main {{
+    display: flex;
+    min-height: 400px;
+}}
+
+#{wireframe_id} .wireframe-sidebar {{
+    width: 300px;
+    background: rgba(0, 97, 126, 0.4);
+    border-right: 2px solid var(--wireframe-border, rgba(255, 255, 255, 0.3));
+    padding: 20px;
+    color: white;
+    display: none;
+    overflow-y: auto;
+}}
+
+#{wireframe_id} .wireframe-sidebar.visible {{
+    display: block;
+}}
+
+#{wireframe_id} .wireframe-sidebar h3 {{
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    margin-top: 0;
+}}
+
+#{wireframe_id} .wireframe-sidebar select,
+#{wireframe_id} .wireframe-sidebar input {{
+    width: 100%;
+    padding: 8px;
+    margin: 8px 0;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    color: white;
+    font-size: 14px;
+}}
+
+#{wireframe_id} .wireframe-sidebar select option {{
+    background: #003B4D;
+    color: white;
+}}
+
+#{wireframe_id} .wireframe-sidebar-footer {{
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.3);
+}}
+
+#{wireframe_id} .wireframe-viewer {{
+    flex: 1;
+    background: rgba(0, 59, 77, 0.2);
+    padding: 20px;
+    position: relative;
+    color: white;
+}}
+
+#{wireframe_id} .viewer-legend {{
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(0, 59, 77, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 6px;
+    padding: 12px;
+    min-width: 150px;
+}}
+
+#{wireframe_id} .legend-item {{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 6px 0;
+    font-size: 13px;
+}}
+
+#{wireframe_id} .legend-icon {{
+    width: 20px;
+    height: 20px;
+    border-radius: 3px;
+    background: #007DA4;
+}}
+
+#{wireframe_id} .legend-icon:nth-child(2) {{
+    background: #00B4E6;
+}}
+
+#{wireframe_id} .legend-icon:nth-child(3) {{
+    background: #C75109;
+}}
+</style>
+''')
+        
+        # Build toolbar with optional disabled tabs
+        toolbar_icons = [
+            ('loaders', 'database-import', 'Import Data'),
+            ('save', 'download', 'Export'),
+            ('divider', '', ''),
+            ('settings', 'tune', 'Plot Options'),
+            ('info', 'information', 'Metadata'),
+            ('plugins', 'wrench', 'Plugins'),
+            ('subsets', 'selection', 'Subsets'),
+        ]
+        
+        toolbar_html = '<div class="wireframe-toolbar">'
+        for tab_id, icon, title in toolbar_icons:
+            if tab_id == 'divider':
+                toolbar_html += '<div class="wireframe-toolbar-divider"></div>'
+            else:
+                disabled_class = ' disabled' if tab_id in disabled_tabs else ''
+                data_sidebar = f' data-sidebar="{tab_id}"' if tab_id not in disabled_tabs else ''
+                toolbar_html += f'<div class="wireframe-toolbar-icon{disabled_class}" {data_sidebar} data-icon="{icon}" title="{title}"></div>'
+        toolbar_html += '<div class="wireframe-toolbar-spacer"></div>'
+        toolbar_html += '</div>'
+        
+        # Build sidebar content
+        sidebar_html = '<div class="wireframe-sidebar" id="' + wireframe_id + '-sidebar">'
+        if custom_sidebar_html:
+            sidebar_html += custom_sidebar_html
+        elif sidebar_content == 'plugins':
+            sidebar_html += '''
+                <h3>Aperture Photometry</h3>
+                <label>Data:</label>
+                <select id="''' + wireframe_id + '''-data-select">
+                    <option>Image 1</option>
+                    <option>Image 2</option>
+                </select>
+            '''
+        else:
+            sidebar_html += '<p>Click toolbar icons to view sidebar content</p>'
+        
+        if show_footer:
+            sidebar_html += '<div class="wireframe-sidebar-footer"><small>Learn more in documentation</small></div>'
+        
+        sidebar_html += '</div>'
+        
+        # Build viewer content with legend
+        viewer_html = '<div class="wireframe-viewer">'
+        if viewer_content:
+            viewer_html += viewer_content
+        else:
+            viewer_html += '<div style="text-align: center; padding-top: 100px;">Viewer Area</div>'
+        
+        if legend_entries:
+            viewer_html += '<div class="viewer-legend">'
+            for i, entry in enumerate(legend_entries):
+                viewer_html += f'<div class="legend-item"><div class="legend-icon"></div><span>{entry}</span></div>'
+            viewer_html += '</div>'
+        
+        viewer_html += '</div>'
+        
+        # Combine everything
+        html_parts.append(f'<div id="{wireframe_id}" class="wireframe-demo">')
+        html_parts.append('<div class="wireframe-demo-container">')
+        html_parts.append(toolbar_html)
+        html_parts.append('<div class="wireframe-main">')
+        html_parts.append(sidebar_html)
+        html_parts.append(viewer_html)
+        html_parts.append('</div>')
+        html_parts.append('</div>')
+        
+        # Add JavaScript for interactivity
+        html_parts.append(f'''
+<script>
+(function() {{
+    var wireframeId = '{wireframe_id}';
+    var container = document.getElementById(wireframeId);
+    var sidebar = document.getElementById(wireframeId + '-sidebar');
+    var icons = container.querySelectorAll('.wireframe-toolbar-icon[data-sidebar]');
+    var currentSidebar = null;
+    var autoCycling = {str(auto_cycle).lower()};
+    var cycleIndex = 0;
+    var sidebarOrder = ['plugins'];
+    
+    // Show initial sidebar
+    {'sidebar.classList.add("visible"); currentSidebar = "' + sidebar_content + '";' if sidebar_content else ''}
+    
+    // Icon click handlers
+    icons.forEach(function(icon) {{
+        icon.addEventListener('click', function() {{
+            var sidebarType = icon.getAttribute('data-sidebar');
+            if (!sidebarType) return;
+            
+            if (currentSidebar === sidebarType) {{
+                sidebar.classList.remove('visible');
+                icon.classList.remove('active');
+                currentSidebar = null;
+            }} else {{
+                icons.forEach(function(i) {{ i.classList.remove('active'); }});
+                sidebar.classList.add('visible');
+                icon.classList.add('active');
+                currentSidebar = sidebarType;
+            }}
+        }});
+    }});
+    
+    // Auto-cycle function
+    function autoCycle() {{
+        if (!autoCycling) return;
+        
+        var targetIcon = container.querySelector('.wireframe-toolbar-icon[data-sidebar="' + sidebarOrder[cycleIndex] + '"]');
+        if (targetIcon) {{
+            targetIcon.click();
+        }}
+        
+        // Cycle through dropdown if present
+        var dataSelect = document.getElementById(wireframeId + '-data-select');
+        if (dataSelect) {{
+            setTimeout(function() {{
+                dataSelect.selectedIndex = (dataSelect.selectedIndex + 1) % dataSelect.options.length;
+            }}, 1500);
+        }}
+        
+        cycleIndex = (cycleIndex + 1) % sidebarOrder.length;
+        setTimeout(autoCycle, 3000);
+    }}
+    
+    if (autoCycling) {{
+        setTimeout(autoCycle, 1000);
+    }}
+    
+    {cycle_script}
+}})();
+</script>
+''')
+        
+        html_parts.append('</div>')
+        
+        # Create raw HTML node
+        html_content = '\n'.join(html_parts)
+        raw_node = nodes.raw('', html_content, format='html')
+        return [raw_node]
+
+
 def setup(app):
     app.add_directive('jdavizclihelp', JdavizCLIHelpDirective)
     app.add_directive('jdavizlanding', JdavizLandingPageDirective)
     app.add_directive('plugin-api-refs', PluginApiReferencesDirective)
     app.add_directive('plugin-availability', PluginAvailabilityDirective)
+    app.add_directive('wireframe-demo', WireframeDemoDirective)
