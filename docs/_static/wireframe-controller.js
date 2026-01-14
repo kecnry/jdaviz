@@ -197,7 +197,38 @@
                 var tabs = sidebarData.tabs || [];
                 var learnMore = sidebarData.learnMore || [];
                 
-                if (tabs.length === 0) return;
+                // Handle single-content sidebars (no tabs)
+                if (tabs.length === 0 || !sidebarData.tabs) {
+                    var content = sidebarData.content || '';
+                    var apiSnippet = sidebarData.apiSnippet || '';
+                    var contentHtml = '<div class="wireframe-sidebar-content">' + apiSnippet + content + '</div>';
+                    
+                    var footerHtml = '';
+                    if (learnMore && learnMore.text && cfg.showFooter) {
+                        footerHtml = '<div class="wireframe-sidebar-footer" style="display: block;">' +
+                            '<button class="wireframe-sidebar-footer-button" data-scroll-target="' + learnMore.target + '">' +
+                            learnMore.text +
+                            '</button></div>';
+                    }
+                    
+                    sidebarBody.innerHTML = contentHtml;
+                    if (footerHtml) {
+                        sidebarBody.insertAdjacentHTML('beforeend', footerHtml);
+                        
+                        // Attach footer button click handler
+                        if (cfg.onFooterButtonClick) {
+                            var footerButton = sidebarBody.querySelector('.wireframe-sidebar-footer-button');
+                            if (footerButton) {
+                                footerButton.addEventListener('click', function() {
+                                    stopAutoCycle();
+                                    var target = footerButton.getAttribute('data-scroll-target');
+                                    cfg.onFooterButtonClick(target);
+                                });
+                            }
+                        }
+                    }
+                    return;
+                }
                 
                 // Ensure tabIndex is valid
                 tabIndex = tabIndex || 0;
@@ -211,8 +242,9 @@
                 });
                 tabsHtml += '</div>';
                 
-                // Build content HTML
-                var contentHtml = '<div class="wireframe-sidebar-content">' + tabs[tabIndex].content + '</div>';
+                // Build content HTML (include API snippet if present)
+                var apiSnippet = tabs[tabIndex].apiSnippet || '';
+                var contentHtml = '<div class="wireframe-sidebar-content">' + apiSnippet + tabs[tabIndex].content + '</div>';
                 
                 // Build footer HTML
                 var footerHtml = '';

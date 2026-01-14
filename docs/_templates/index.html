@@ -3203,14 +3203,145 @@
                     return;
                 }
                 
+                // Sidebar content map with tabs, content, API snippets, and learn more buttons
+                var sidebarTabs = {
+                    'loaders': {
+                        tabs: [
+                            {
+                                title: 'Data',
+                                content: '{{ descriptions.loaders|capitalize }}.<br>' +
+                                    '<div class="wireframe-form-group">' +
+                                    '<label class="wireframe-form-label">Source</label>' +
+                                    '<select class="wireframe-select" id="source-select">' +
+                                    '<option>File</option><option>File Drop</option><option>URL</option>' +
+                                    '</select>' +
+                                    '</div>' +
+                                    '<div class="wireframe-form-group">' +
+                                    '<label class="wireframe-form-label">Format</label>' +
+                                    '<select class="wireframe-select" id="format-select">' +
+                                    '<option>1D Spectrum</option><option>2D Spectrum</option>' +
+                                    '</select>' +
+                                    '</div>' +
+                                    '<button class="wireframe-button">Load</button>',
+                                apiSnippet: '<div class="api-snippet-container"><pre class="api-snippet">ldr = jd.loaders[\'<i>source</i>\']\nldr.load()</pre></div>'
+                            },
+                            {
+                                title: 'Viewer',
+                                content: '{{ descriptions.viewers|capitalize }}.<br>' +
+                                    '<div class="wireframe-form-group">' +
+                                    '<label class="wireframe-form-label">Viewer Type</label>' +
+                                    '<select class="wireframe-select" id="viewer-type-select">' +
+                                    '<option>1D Spectrum</option><option>2D Spectrum</option><option>Histogram</option><option>Scatter</option>' +
+                                    '</select>' +
+                                    '</div>' +
+                                    '<button class="wireframe-button">Create Viewer</button>',
+                                apiSnippet: '<div class="api-snippet-container"><pre class="api-snippet">vc = jd.new_viewers[\'<i>viewer_type</i>\']\nvc.create()</pre></div>'
+                            }
+                        ],
+                        learnMore: [
+                            { text: 'Learn more about data import →', target: 'grid-loaders' },
+                            { text: 'Explore viewer options →', target: 'grid-loaders' }
+                        ]
+                    },
+                    'save': {
+                        tabs: null,
+                        content: '{{ descriptions.export|capitalize }}.',
+                        apiSnippet: '<div class="api-snippet-container"><pre class="api-snippet">plg = jd.plugins[\'Export\']</pre></div>',
+                        learnMore: { text: 'See export options →', target: 'grid-export' }
+                    },
+                    'settings': {
+                        tabs: [
+                            {
+                                title: 'Plot Options',
+                                content: '{{ descriptions.settings_plot }}',
+                                apiSnippet: '<div class="api-snippet-container"><pre class="api-snippet">plg = jd.plugins[\'Plot Options\']</pre></div>'
+                            },
+                            {
+                                title: 'Units',
+                                content: '{{ descriptions.settings_units }}',
+                                apiSnippet: '<div class="api-snippet-container"><pre class="api-snippet">plg = jd.plugins[\'Display Units\']</pre></div>'
+                            }
+                        ],
+                        learnMore: [
+                            { text: 'View plot customization →', target: 'grid-settings' },
+                            { text: 'Learn about units →', target: 'grid-settings' }
+                        ]
+                    },
+                    'info': {
+                        tabs: [
+                            {
+                                title: 'Metadata',
+                                content: '{{ descriptions.info_metadata }}',
+                                apiSnippet: '<div class="api-snippet-container"><pre class="api-snippet">plg = jd.plugins[\'Metadata\']</pre></div>'
+                            },
+                            {
+                                title: 'Markers',
+                                content: '{{ descriptions.info_markers|capitalize }}.',
+                                apiSnippet: '<div class="api-snippet-container"><pre class="api-snippet">plg = jd.plugins[\'Plot Options\']\nplg.export_table()</pre></div>'
+                            },
+                            {
+                                title: 'Logger',
+                                content: '{{ descriptions.info_logger }}',
+                                apiSnippet: '<div class="api-snippet-container"><pre class="api-snippet">plg = jd.plugins[\'Logger\']\nplg.history</pre></div>'
+                            }
+                        ],
+                        learnMore: [
+                            { text: 'Explore metadata tools →', target: 'grid-info' },
+                            { text: 'Learn about markers →', target: 'grid-info' },
+                            { text: 'View logging options →', target: 'grid-info' }
+                        ]
+                    },
+                    'plugins': {
+                        tabs: null,
+                        content: '{{ descriptions.plugins|capitalize }}.',
+                        apiSnippet: '<div class="api-snippet-container"><pre class="api-snippet">plg = jd.plugins[\'<i>plugin_name</i>\']</pre></div>',
+                        learnMore: { text: 'Browse analysis plugins →', target: 'grid-plugins' }
+                    },
+                    'subsets': {
+                        tabs: null,
+                        content: '{{ descriptions.subsets|capitalize }}.',
+                        apiSnippet: '<div class="api-snippet-container"><pre class="api-snippet">plg = jd.plugins[\'Subset Tools\']</pre></div>',
+                        learnMore: { text: 'Learn about subsets →', target: 'grid-subsets' }
+                    }
+                };
+                
+                // Scroll-to handler for footer buttons
+                function handleFooterButtonClick(target) {
+                    var targetElement = document.querySelector('[data-grid-id="' + target + '"]');
+                    if (targetElement) {
+                        targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        
+                        // Highlight the target grid item
+                        setTimeout(function() {
+                            // Remove highlight from any previously highlighted items
+                            document.querySelectorAll('.grid-item.highlighted').forEach(function(el) {
+                                el.classList.remove('highlighted');
+                            });
+                            
+                            // Add highlight to current target
+                            targetElement.classList.add('highlighted');
+                            
+                            // Remove highlight after 3 seconds
+                            setTimeout(function() {
+                                targetElement.classList.remove('highlighted');
+                            }, 3000);
+                        }, 500);
+                    }
+                }
+                
                 // Configuration for index.html wireframe
                 var config = {
                     disabledTabs: [],
                     legendEntries: ['1D Spectrum', 'Subset 1'],
                     sidebarId: '',
-                    sidebarContent: 'Click toolbar icons to toggle different sidebars',
-                    viewerContent: 'Viewer Area',
-                    showFooter: false,
+                    sidebarTabs: sidebarTabs,
+                    showFooter: true,
+                    showViewerToolbar: true,
+                    showToolbarRight: true,
+                    toolbarSearchPlaceholder: 'Search documentation...',
+                    toolbarVersion: '{{ jdaviz_version }}',
+                    showMouseoverButton: true,
+                    onFooterButtonClick: handleFooterButtonClick,
                     autoCycle: true,
                     cycleSteps: ['click:loaders', 'click:save', 'click:settings', 'click:info', 'click:plugins', 'click:subsets']
                 };
