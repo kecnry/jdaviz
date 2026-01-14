@@ -83,14 +83,17 @@
             toolbarHtml += '<div class="wireframe-toolbar-spacer"></div>';
             toolbar.innerHTML = toolbarHtml;
             
-            // Apply icon backgrounds
-            var icons = toolbar.querySelectorAll('.wireframe-toolbar-icon[data-sidebar]');
-            icons.forEach(function(icon) {
+            // Apply icon backgrounds to ALL toolbar icons (including disabled ones)
+            var allIcons = toolbar.querySelectorAll('.wireframe-toolbar-icon[data-icon]');
+            allIcons.forEach(function(icon) {
                 var iconName = icon.dataset.icon;
                 if (iconName && iconSvgs[iconName]) {
                     icon.style.backgroundImage = iconSvgs[iconName];
                 }
             });
+            
+            // Get clickable icons for event handlers
+            var icons = toolbar.querySelectorAll('.wireframe-toolbar-icon[data-sidebar]');
             
             // Populate legend
             if (cfg.legendEntries.length > 0) {
