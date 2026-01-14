@@ -3104,9 +3104,6 @@
             activatePlatformTab(currentPlatformIndex);
         });
     </script>
-    <!-- Wireframe Demo Shared Components -->
-    <link rel="stylesheet" href="{{ pathto('_static/wireframe-demo.css', 1) }}">
-    <script src="{{ pathto('_static/wireframe-controller.js', 1) }}"></script>
 </head>
 <body>
     <div class="container">
@@ -3159,198 +3156,91 @@
 
         <!-- Wireframe Section -->
         <div class="wireframe-section">
-            <!-- Wireframe Demo Base Template -->
-            <div class="wireframe-demo-container" id="wireframe-container-index">
-                <div class="wireframe-cycle-control" id="wireframe-cycle-control-index" data-flyout-text="Play" style="display: none;">
-                    <div class="wireframe-cycle-control-icon" id="wireframe-cycle-icon-play-index"></div>
-                    <div class="wireframe-cycle-control-icon hidden" id="wireframe-cycle-icon-pause-index"></div>
-                    <div class="wireframe-cycle-control-icon hidden" id="wireframe-cycle-icon-restart-index"></div>
+            <div class="wireframe-container">
+                <div class="wireframe-toolbar">
+                    <div class="wireframe-toolbar-icon" data-sidebar="loaders" data-icon="database-import" title="Import Data"></div>
+                    <div class="wireframe-toolbar-icon" data-sidebar="save" data-icon="download" title="Export"></div>
+                    <div class="wireframe-toolbar-divider"></div>
+                    <div class="wireframe-toolbar-icon" data-sidebar="settings" data-icon="tune" title="Plot Options"></div>
+                    <div class="wireframe-toolbar-icon" data-sidebar="info" data-icon="information" title="Metadata"></div>
+                    <div class="wireframe-toolbar-icon" data-sidebar="plugins" data-icon="wrench" title="Plugins"></div>
+                    <div class="wireframe-toolbar-icon" data-sidebar="subsets" data-icon="selection" title="Subsets"></div>
+                    <div class="wireframe-toolbar-divider"></div>
+                    <div class="wireframe-toolbar-icon mouseover-button" data-icon="auto-fix" title="Mouseover Info"></div>
+                    <div class="wireframe-toolbar-spacer"></div>
+                    <div class="wireframe-toolbar-right">
+                        <div class="wireframe-toolbar-search-row">
+                            <input type="text" class="wireframe-toolbar-search" id="wireframe-search-input" placeholder="Search documentation..." readonly />
+                        </div>
+                        <div class="wireframe-toolbar-version-row">
+                            <span class="wireframe-toolbar-version">v{{ jdaviz_version }}</span>
+                            <div class="api-button" data-icon="api" title="Toggle API Snippets" style="display: none;"></div>
+                        </div>
+                    </div>
                 </div>
-                
-                <div class="wireframe-toolbar" id="wireframe-toolbar-index">
-                    <!-- Toolbar icons will be populated by JavaScript -->
-                </div>
-                
                 <div class="wireframe-main">
-                    <div class="wireframe-sidebar" id="wireframe-sidebar-index">
-                        <div class="wireframe-sidebar-body">
-                            <div class="wireframe-sidebar-content" id="wireframe-sidebar-content-index">
-                                <!-- Sidebar content will be populated by JavaScript -->
-                            </div>
-                            <div class="wireframe-sidebar-footer" id="wireframe-sidebar-footer-index" style="display: none;">
-                                <small>Learn more in documentation</small>
-                            </div>
+                    <div class="wireframe-sidebar" id="wireframe-sidebar">
+                        <div class="wireframe-sidebar-content">
+                            Click toolbar icons to toggle different sidebars
                         </div>
                     </div>
-                    
                     <div class="wireframe-viewer">
-                        <div class="viewer-content" id="wireframe-viewer-content-index">
+                        <!-- Viewer Toolbar -->
+                        <div class="viewer-toolbar">
+                            <div class="viewer-toolbar-spacer"></div>
+                            <div class="viewer-toolbar-icon" data-icon="bqplot:home" title="Home"></div>
+                            <div class="viewer-toolbar-icon" data-icon="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4KPCEtLSBHZW5lcmF0b3I6IEFkb2JlIElsbHVzdHJhdG9yIDI3LjUuMCwgU1ZHIEV4cG9ydCBQbHVnLUluIC4gU1ZHIFZlcnNpb246IDYuMDAgQnVpbGQgMCkgIC0tPgo8c3ZnIHZlcnNpb249IjEuMSIgaWQ9IkxheWVyXzEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHg9IjBweCIgeT0iMHB4IgoJIHZpZXdCb3g9IjAgMCAyMi45IDIzIiBzdHlsZT0iZW5hYmxlLWJhY2tncm91bmQ6bmV3IDAgMCAyMi45IDIzOyIgeG1sOnNwYWNlPSJwcmVzZXJ2ZSI+CjxzdHlsZSB0eXBlPSJ0ZXh0L2NzcyI+Cgkuc3Qwe2ZpbGw6IzAxMDEwMTt9Cjwvc3R5bGU+Cjxwb2x5Z29uIGNsYXNzPSJzdDAiIHBvaW50cz0iMjAuMSwxMy4xIDIxLDEzLjEgMjEsMS45IDkuOSwxLjkgOS45LDMuMyA3LjksMy4zIDcuOSwwIDIyLjksMCAyMi45LDE1LjEgMjAuMSwxNS4xICIvPgo8cGF0aCBjbGFzcz0ic3QwIiBkPSJNMCwyMS4xTDEuOSwyM2w1LjgtNS43di0wLjZsMC44LTAuOGMxLjIsMC45LDIuNiwxLjMsNCwxLjNjMy43LDAsNi43LTMsNi43LTYuN3MtMy02LjctNi43LTYuN3MtNi43LDMtNi43LDYuNwoJYzAsMS40LDAuNSwyLjgsMS4zLDRsLTAuOCwwLjhINS44TDAsMjEuMXogTTEyLjQsMTUuMmMtMi42LDAtNC43LTIuMS00LjctNC43bDAsMGMwLTIuNiwyLjEtNC43LDQuNy00LjdjMi42LDAsNC43LDIuMSw0LjcsNC43CglTMTUsMTUuMiwxMi40LDE1LjJDMTIuNCwxNS4yLDEyLjQsMTUuMiwxMi40LDE1LjJ6Ii8+Cjwvc3ZnPgo=" title="Pan/Zoom"></div>
+                            <div class="viewer-toolbar-icon" data-icon="data:image/svg+xml;base64,PHN2ZyBpZD0iTGF5ZXJfMSIgZGF0YS1uYW1lPSJMYXllciAxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNS40NiAyNS40NiI+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOiMwMTAxMDE7fTwvc3R5bGU+PC9kZWZzPjx0aXRsZT52aXogbG9nb3MgW1JlY292ZXJlZF08L3RpdGxlPjxwb2x5bGluZSBjbGFzcz0iY2xzLTEiIHBvaW50cz0iMTEuNjcgMTMuNzMgMTEuNjcgMjEuNjMgMTAuMTMgMjAuMDkgOC43MiAyMS41MSAxMi42NyAyNS40NiAxNi42MiAyMS41MSAxNS4yMSAyMC4wOSAxMy42NyAyMS42MyAxMy42NyAxMy43MyIvPjxwb2x5bGluZSBjbGFzcz0iY2xzLTEiIHBvaW50cz0iMTMuNjcgMTMuNzMgMTMuNjcgMy44MyAxNS4yMSA1LjM2IDE2LjYyIDMuOTUgMTIuNjcgMCA4LjcyIDMuOTUgMTAuMTMgNS4zNiAxMS42NyAzLjgzIDExLjY3IDEzLjczIi8+PC9zdmc+" title="Rectangular ROI"></div>
+                            <div class="viewer-toolbar-icon" data-icon="data:image/svg+xml;base64,PHN2ZyBpZD0iTGF5ZXJfMSIgZGF0YS1uYW1lPSJMYXllciAxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMi43NiAyNCI+PGRlZnM+PHN0eWxlPi5jbHMtMXtmaWxsOiMyMzFmMjA7fTwvc3R5bGU+PC9kZWZzPjxyZWN0IGNsYXNzPSJjbHMtMSIgeD0iMS45NiIgeT0iMTYuMTUiIHdpZHRoPSIyLjk2IiBoZWlnaHQ9IjIuOTYiIHJ4PSIxLjQ4Ii8+PHJlY3QgY2xhc3M9ImNscy0xIiB4PSIxOCIgeT0iMTEuNzciIHdpZHRoPSIyLjk2IiBoZWlnaHQ9IjIuOTYiIHJ4PSIxLjQ4Ii8+PHBhdGggY2xhc3M9ImNscy0xIiBkPSJNNy4zMywwVjI0aDguMzNWMFptNC4yMiwxMGgwYTEuNDgsMS40OCwwLDAsMS0xLjQ4LTEuNDhoMEExLjQ4LDEuNDgsMCwwLDEsMTEuNTUsN2gwQTEuNDgsMS40OCwwLDAsMSwxMyw4LjUyaDBBMS40OCwxLjQ4LDAsMCwxLDExLjU1LDEwWiIvPjwvc3ZnPg==" title="Circular ROI"></div>
+                        </div>
+
+                        <!-- Viewer Content Area -->
+                        <div class="viewer-content">
                             Viewer Area
-                            <div class="data-menu-legend" id="wireframe-legend-index">
-                                <!-- Legend items will be populated by JavaScript -->
+
+                            <!-- Data Menu Legend -->
+                            <div class="data-menu-legend">
+                                <div class="legend-item data-menu-trigger">
+                                    <svg class="legend-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="white" d="M3,5A2,2 0 0,1 5,3H19A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21H5C3.89,21 3,20.1 3,19V5M11,7A2,2 0 0,0 9,9V17H11V13H13V17H15V9A2,2 0 0,0 13,7H11M11,9H13V11H11V9Z" /></svg>
+                                    <div class="legend-text">1D Spectrum</div>
+                                </div>
+                                <div class="legend-item data-menu-trigger">
+                                    <svg class="legend-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="white" d="M5,3H19A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5A2,2 0 0,1 5,3M15,10.5V9A2,2 0 0,0 13,7H9V17H13A2,2 0 0,0 15,15V13.5C15,12.7 14.3,12 13.5,12C14.3,12 15,11.3 15,10.5M13,15H11V13H13V15M13,11H11V9H13V11Z" /></svg>
+                                    <div class="legend-text">Subset 1</div>
+                                </div>
+                            </div>
+
+                            <!-- Data Menu Popup -->
+                            <div class="data-menu-popup" id="data-menu-popup">
+                                <div class="data-menu-header">
+                                    <div class="data-menu-title">Data Menu</div>
+                                    <button class="data-menu-close" id="data-menu-close">×</button>
+                                </div>
+                                <div class="data-menu-content">
+                                    <p class="data-menu-description">
+                                        Control data and subset layer order and visibility for each viewer.
+                                        Toggle layer visibility, reorder layers by dragging, and manage which data appears in the viewer.
+                                    </p>
+                                    <div class="data-menu-api-snippet">
+                                        <pre class="api-snippet">dm = jd.viewers[viewer].data_menu</pre>
+                                        <button class="api-learn-more" data-scroll-target="grid-userapi">Learn about API access</button>
+                                    </div>
+                                    <button class="data-menu-button wireframe-sidebar-link" data-scroll-target="grid-data-menu">Learn more about Data Menu →</button>
+                                </div>
                             </div>
                         </div>
                     </div>
+                </div>
+                <!-- Auto-cycle control button -->
+                <div class="wireframe-cycle-control" id="wireframe-cycle-control" data-flyout-text="pause demo">
+                    <div class="wireframe-cycle-control-icon" id="cycle-icon-play"></div>
+                    <div class="wireframe-cycle-control-icon hidden" id="cycle-icon-pause"></div>
+                    <div class="wireframe-cycle-control-icon hidden" id="cycle-icon-restart"></div>
                 </div>
             </div>
-            
-            <script>
-            // Initialize wireframe with index.html-specific configuration
-            (function() {
-                // Wait for wireframe controller to be loaded
-                if (typeof initWireframeDemo === 'undefined') {
-                    console.error('Wireframe controller not loaded');
-                    return;
-                }
-                
-                // Sidebar content map with tabs, content, API snippets, and learn more buttons
-                var sidebarTabs = {
-                    'loaders': {
-                        tabs: [
-                            {
-                                title: 'Data',
-                                content: '{{ descriptions.loaders|capitalize }}.<br>' +
-                                    '<div class="wireframe-form-group">' +
-                                    '<label class="wireframe-form-label">Source</label>' +
-                                    '<select class="wireframe-select" id="source-select">' +
-                                    '<option>File</option><option>File Drop</option><option>URL</option>' +
-                                    '</select>' +
-                                    '</div>' +
-                                    '<div class="wireframe-form-group">' +
-                                    '<label class="wireframe-form-label">Format</label>' +
-                                    '<select class="wireframe-select" id="format-select">' +
-                                    '<option>1D Spectrum</option><option>2D Spectrum</option>' +
-                                    '</select>' +
-                                    '</div>' +
-                                    '<button class="wireframe-button">Load</button>',
-                                apiSnippet: '<div class="api-snippet-container"><pre class="api-snippet">ldr = jd.loaders[\'<i>source</i>\']\nldr.load()</pre></div>'
-                            },
-                            {
-                                title: 'Viewer',
-                                content: '{{ descriptions.viewers|capitalize }}.<br>' +
-                                    '<div class="wireframe-form-group">' +
-                                    '<label class="wireframe-form-label">Viewer Type</label>' +
-                                    '<select class="wireframe-select" id="viewer-type-select">' +
-                                    '<option>1D Spectrum</option><option>2D Spectrum</option><option>Histogram</option><option>Scatter</option>' +
-                                    '</select>' +
-                                    '</div>' +
-                                    '<button class="wireframe-button">Create Viewer</button>',
-                                apiSnippet: '<div class="api-snippet-container"><pre class="api-snippet">vc = jd.new_viewers[\'<i>viewer_type</i>\']\nvc.create()</pre></div>'
-                            }
-                        ],
-                        learnMore: [
-                            { text: 'Learn more about data import →', target: 'grid-loaders' },
-                            { text: 'Explore viewer options →', target: 'grid-loaders' }
-                        ]
-                    },
-                    'save': {
-                        tabs: null,
-                        content: '{{ descriptions.export|capitalize }}.',
-                        apiSnippet: '<div class="api-snippet-container"><pre class="api-snippet">plg = jd.plugins[\'Export\']</pre></div>',
-                        learnMore: { text: 'See export options →', target: 'grid-export' }
-                    },
-                    'settings': {
-                        tabs: [
-                            {
-                                title: 'Plot Options',
-                                content: '{{ descriptions.settings_plot }}',
-                                apiSnippet: '<div class="api-snippet-container"><pre class="api-snippet">plg = jd.plugins[\'Plot Options\']</pre></div>'
-                            },
-                            {
-                                title: 'Units',
-                                content: '{{ descriptions.settings_units }}',
-                                apiSnippet: '<div class="api-snippet-container"><pre class="api-snippet">plg = jd.plugins[\'Display Units\']</pre></div>'
-                            }
-                        ],
-                        learnMore: [
-                            { text: 'View plot customization →', target: 'grid-settings' },
-                            { text: 'Learn about units →', target: 'grid-settings' }
-                        ]
-                    },
-                    'info': {
-                        tabs: [
-                            {
-                                title: 'Metadata',
-                                content: '{{ descriptions.info_metadata }}',
-                                apiSnippet: '<div class="api-snippet-container"><pre class="api-snippet">plg = jd.plugins[\'Metadata\']</pre></div>'
-                            },
-                            {
-                                title: 'Markers',
-                                content: '{{ descriptions.info_markers|capitalize }}.',
-                                apiSnippet: '<div class="api-snippet-container"><pre class="api-snippet">plg = jd.plugins[\'Plot Options\']\nplg.export_table()</pre></div>'
-                            },
-                            {
-                                title: 'Logger',
-                                content: '{{ descriptions.info_logger }}',
-                                apiSnippet: '<div class="api-snippet-container"><pre class="api-snippet">plg = jd.plugins[\'Logger\']\nplg.history</pre></div>'
-                            }
-                        ],
-                        learnMore: [
-                            { text: 'Explore metadata tools →', target: 'grid-info' },
-                            { text: 'Learn about markers →', target: 'grid-info' },
-                            { text: 'View logging options →', target: 'grid-info' }
-                        ]
-                    },
-                    'plugins': {
-                        tabs: null,
-                        content: '{{ descriptions.plugins|capitalize }}.',
-                        apiSnippet: '<div class="api-snippet-container"><pre class="api-snippet">plg = jd.plugins[\'<i>plugin_name</i>\']</pre></div>',
-                        learnMore: { text: 'Browse analysis plugins →', target: 'grid-plugins' }
-                    },
-                    'subsets': {
-                        tabs: null,
-                        content: '{{ descriptions.subsets|capitalize }}.',
-                        apiSnippet: '<div class="api-snippet-container"><pre class="api-snippet">plg = jd.plugins[\'Subset Tools\']</pre></div>',
-                        learnMore: { text: 'Learn about subsets →', target: 'grid-subsets' }
-                    }
-                };
-                
-                // Scroll-to handler for footer buttons
-                function handleFooterButtonClick(target) {
-                    var targetElement = document.querySelector('[data-grid-id="' + target + '"]');
-                    if (targetElement) {
-                        targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        
-                        // Highlight the target grid item
-                        setTimeout(function() {
-                            // Remove highlight from any previously highlighted items
-                            document.querySelectorAll('.grid-item.highlighted').forEach(function(el) {
-                                el.classList.remove('highlighted');
-                            });
-                            
-                            // Add highlight to current target
-                            targetElement.classList.add('highlighted');
-                            
-                            // Remove highlight after 3 seconds
-                            setTimeout(function() {
-                                targetElement.classList.remove('highlighted');
-                            }, 3000);
-                        }, 500);
-                    }
-                }
-                
-                // Configuration for index.html wireframe
-                var config = {
-                    disabledTabs: [],
-                    legendEntries: ['1D Spectrum', 'Subset 1'],
-                    sidebarId: '',
-                    sidebarTabs,
-                    showFooter: true,
-                    showViewerToolbar: true,
-                    showToolbarRight: true,
-                    toolbarSearchPlaceholder: 'Search documentation...',
-                    toolbarVersion: '{{ jdaviz_version }}',
-                    showMouseoverButton: true,
-                    onFooterButtonClick: handleFooterButtonClick,
-                    autoCycle: true,
-                    cycleSteps: ['click:loaders', 'click:save', 'click:settings', 'click:info', 'click:plugins', 'click:subsets']
-                };
-                
-                // Initialize the wireframe
-                initWireframeDemo('wireframe-container-index', config);
-            })();
-            </script>
-        </div><!-- Tab-specific Content -->
+        </div>
+
+        <!-- Tab-specific Content -->
         <div class="platform-content-section">
             <!-- Desktop UI Content -->
             <div class="platform-tab-content" data-platform-content="desktop">
