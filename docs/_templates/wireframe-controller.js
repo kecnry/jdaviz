@@ -31,17 +31,17 @@ function initializeWireframeController() {
     }
 
     function updateCycleControlButton() {
-        const cycleIconPlay = document.getElementById('cycle-icon-play');
         const cycleIconPause = document.getElementById('cycle-icon-pause');
+        const cycleIconRestart = document.getElementById('cycle-icon-restart');
 
         if (autoCycling) {
-            // Show play icon when cycling
-            if (cycleIconPlay) cycleIconPlay.classList.remove('hidden');
-            if (cycleIconPause) cycleIconPause.classList.add('hidden');
-        } else {
-            // Show pause icon when stopped
-            if (cycleIconPlay) cycleIconPlay.classList.add('hidden');
+            // Show PAUSE icon when cycling (action that will be taken)
             if (cycleIconPause) cycleIconPause.classList.remove('hidden');
+            if (cycleIconRestart) cycleIconRestart.classList.add('hidden');
+        } else {
+            // Show RESTART icon when stopped (action that will be taken)
+            if (cycleIconRestart) cycleIconRestart.classList.remove('hidden');
+            if (cycleIconPause) cycleIconPause.classList.add('hidden');
         }
     }
 
@@ -149,11 +149,9 @@ function initializeWireframeController() {
     });
 
     // Apply SVG backgrounds to cycle control icons
-    const cycleIconPlay = document.getElementById('cycle-icon-play');
     const cycleIconPause = document.getElementById('cycle-icon-pause');
     const cycleIconRestart = document.getElementById('cycle-icon-restart');
 
-    if (cycleIconPlay) cycleIconPlay.style.backgroundImage = iconSvgs['play'];
     if (cycleIconPause) cycleIconPause.style.backgroundImage = iconSvgs['pause'];
     if (cycleIconRestart) cycleIconRestart.style.backgroundImage = iconSvgs['restart'];
 
@@ -799,31 +797,17 @@ function initializeWireframeController() {
     // Handle cycle control button
     const cycleControlButton = document.getElementById('wireframe-cycle-control');
     if (cycleControlButton) {
-        // Hover: show pause when playing, restart when paused
+        // Hover: only update flyout text, don't change icons
         cycleControlButton.addEventListener('mouseenter', function() {
-            const cycleIconPlay = document.getElementById('cycle-icon-play');
-            const cycleIconPause = document.getElementById('cycle-icon-pause');
-            const cycleIconRestart = document.getElementById('cycle-icon-restart');
-
-            if (cycleIconPlay) cycleIconPlay.classList.add('hidden');
-            if (cycleIconRestart) cycleIconRestart.classList.add('hidden');
-
             if (autoCycling) {
-                // Show pause icon and text when currently playing
-                if (cycleIconPause) cycleIconPause.classList.remove('hidden');
                 cycleControlButton.setAttribute('data-flyout-text', 'pause demo');
             } else {
-                // Show restart icon and text when paused
-                if (cycleIconPause) cycleIconPause.classList.add('hidden');
-                if (cycleIconRestart) cycleIconRestart.classList.remove('hidden');
                 cycleControlButton.setAttribute('data-flyout-text', 'restart demo');
             }
         });
 
         cycleControlButton.addEventListener('mouseleave', function() {
-            const cycleIconRestart = document.getElementById('cycle-icon-restart');
-            if (cycleIconRestart) cycleIconRestart.classList.add('hidden');
-            updateCycleControlButton();
+            // No icon changes needed on mouse leave
         });
 
         // Click: pause when playing, restart when paused
@@ -832,10 +816,8 @@ function initializeWireframeController() {
                 // Pause/cancel the cycle
                 stopAutoCycle();
                 // Update hover state immediately - show restart since now paused
-                const cycleIconPlay = document.getElementById('cycle-icon-play');
                 const cycleIconPause = document.getElementById('cycle-icon-pause');
                 const cycleIconRestart = document.getElementById('cycle-icon-restart');
-                if (cycleIconPlay) cycleIconPlay.classList.add('hidden');
                 if (cycleIconPause) cycleIconPause.classList.add('hidden');
                 if (cycleIconRestart) cycleIconRestart.classList.remove('hidden');
                 cycleControlButton.setAttribute('data-flyout-text', 'restart demo');
@@ -843,10 +825,8 @@ function initializeWireframeController() {
                 // Restart the cycle
                 restartAutoCycle();
                 // Update hover state immediately - show pause since now playing
-                const cycleIconPlay = document.getElementById('cycle-icon-play');
                 const cycleIconPause = document.getElementById('cycle-icon-pause');
                 const cycleIconRestart = document.getElementById('cycle-icon-restart');
-                if (cycleIconPlay) cycleIconPlay.classList.add('hidden');
                 if (cycleIconRestart) cycleIconRestart.classList.add('hidden');
                 if (cycleIconPause) cycleIconPause.classList.remove('hidden');
                 cycleControlButton.setAttribute('data-flyout-text', 'pause demo');
