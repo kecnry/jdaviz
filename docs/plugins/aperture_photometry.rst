@@ -4,13 +4,6 @@
 Aperture Photometry
 ********************
 
-.. wireframe-demo::
-   :demo: plugins,plugins:open-panel,plugins:select-data=Image 2
-   :enable-only: plugins
-   :plugin-name: Aperture Photometry
-   :plugin-panel-opened: false
-   :custom-content: plugins=<div class="wireframe-form-group"><label class="wireframe-form-label">Data</label><select class="wireframe-select"><option>Image 1</option><option>Image 2</option></select></div><div class="wireframe-form-group"><label class="wireframe-form-label">Aperture</label><select class="wireframe-select"><option>Subset 1</option><option>Subset 2</option></select></div>
-
 .. plugin-availability::
 
 Perform photometry measurements within defined apertures.
@@ -31,8 +24,6 @@ statistics within the aperture, with optional background subtraction.
 * Support for multiple datasets and apertures
 * Unit conversion (flux to counts, magnitude)
 * Export results to tables
-
-**Available in:** Imviz, Cubeviz
 
 Details
 =======
@@ -97,6 +88,13 @@ Limitations
 
 UI Access
 =========
+
+.. wireframe-demo::
+   :demo: plugins,plugins@1000:open-panel,plugins:select-data=Image 2
+   :enable-only: plugins
+   :plugin-name: Aperture Photometry
+   :plugin-panel-opened: false
+   :demo-repeat: false
 
 Opening the Plugin
 ------------------

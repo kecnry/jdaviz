@@ -18,79 +18,107 @@ function initializeWireframeController() {
     const customDemo = config.customDemo || null;
     const enableOnly = config.enableOnly || null;
     const showScrollTo = config.showScrollTo !== undefined ? config.showScrollTo : true;
+    const demoRepeat = config.demoRepeat !== undefined ? config.demoRepeat : true;
     const pluginName = config.pluginName || 'Data Analysis Plugin';
     const pluginPanelOpened = config.pluginPanelOpened !== undefined ? config.pluginPanelOpened : true;
-    const customContent = config.customContent || null;
-    
-    // Parse custom content if provided
+    const customContentMapJson = config.customContentMap || null;
+
+    // Parse custom content map from JSON
     let customContentMap = {};
-    if (customContent) {
-        // Simple parser for format: sidebar=content or sidebar:tab=content
-        // For now, assume single entry
-        const match = customContent.match(/^(\w+)(?::(\w+))?=(.+)$/);
-        if (match) {
-            const sidebar = match[1];
-            const tab = match[2];
-            const content = match[3];
-            if (!customContentMap[sidebar]) {
-                customContentMap[sidebar] = {};
-            }
-            if (tab) {
-                customContentMap[sidebar][tab] = content;
-            } else {
-                customContentMap[sidebar].main = content;
-            }
+    if (customContentMapJson) {
+        try {
+            customContentMap = JSON.parse(customContentMapJson);
+        } catch (e) {
+            console.error('Failed to parse customContentMap:', e);
         }
     }
-    
-    // Parse demo sequence - can be simple list or actions
+
+    // Parse demo sequence - can be simple list or actions with optional timing
+    // Format: sidebar@delay:action=value or sidebar:action=value or sidebar
     let demoSequence = [];
     if (customDemo) {
         customDemo.forEach(function(item) {
+            let delay = 2000; // Default delay
+            let workingItem = item;
+
+            // Check for timing syntax: sidebar@1000:action
+            if (item.includes('@')) {
+                const atIndex = item.indexOf('@');
+                const beforeAt = item.substring(0, atIndex);
+                const afterAt = item.substring(atIndex + 1);
+
+                // Extract delay (number before next : or end of string)
+                const colonAfterAt = afterAt.indexOf(':');
+                if (colonAfterAt !== -1) {
+                    delay = parseInt(afterAt.substring(0, colonAfterAt), 10);
+                    workingItem = beforeAt + afterAt.substring(colonAfterAt);
+                } else {
+                    delay = parseInt(afterAt, 10);
+                    workingItem = beforeAt;
+                }
+            }
+
             // Check if item contains action syntax (sidebar:action or sidebar:action=value)
-            if (item.includes(':')) {
-                const parts = item.split(':');
-                const sidebar = parts[0];
-                const actionPart = parts[1];
-                
+            if (workingItem.includes(':')) {
+                const colonIndex = workingItem.indexOf(':');
+                const sidebar = workingItem.substring(0, colonIndex);
+                const actionPart = workingItem.substring(colonIndex + 1);
+
                 // Check if action has a value
                 if (actionPart.includes('=')) {
-                    const actionParts = actionPart.split('=');
+                    const equalsIndex = actionPart.indexOf('=');
+                    const action = actionPart.substring(0, equalsIndex);
+                    const value = actionPart.substring(equalsIndex + 1);
                     demoSequence.push({
                         sidebar: sidebar,
-                        action: actionParts[0],
-                        value: actionParts[1]
+                        action: action,
+                        value: value,
+                        delay: delay
                     });
                 } else {
                     demoSequence.push({
                         sidebar: sidebar,
-                        action: actionPart
+                        action: actionPart,
+                        delay: delay
                     });
                 }
             } else {
                 // Simple sidebar activation
                 demoSequence.push({
-                    sidebar: item,
-                    action: 'show'
+                    sidebar: workingItem,
+                    action: 'show',
+                    delay: delay
                 });
             }
         });
     }
-    
+
     const sidebarOrder = demoSequence.length > 0 ? demoSequence.map(s => s.sidebar) : ['loaders', 'save', 'settings', 'info', 'plugins', 'subsets'];
 
     // Auto-cycling state
     let autoCycling = true;
     let cycleInterval = null;
     let currentCycleIndex = 0;
-    
+
+    // Helper function to create API snippet with proper link/button based on showScrollTo
+    function createApiSnippet(code) {
+        if (showScrollTo) {
+            return '<div class="api-snippet-container"><pre class="api-snippet">' + code + '</pre><button class="api-learn-more" data-scroll-target="grid-userapi">Learn about API access</button></div>';
+        } else {
+            return '<div class="api-snippet-container"><pre class="api-snippet">' + code + '</pre><a class="api-learn-more" href="../userapi/index.html">Learn about API access</a></div>';
+        }
+    }
+
     // Build plugins content dynamically based on configuration
     const pluginsPanelClass = pluginPanelOpened ? 'expansion-panel expanded' : 'expansion-panel';
     const pluginsContentClass = pluginPanelOpened ? 'expansion-panel-content expanded' : 'expansion-panel-content';
-    const pluginsContent = customContentMap.plugins && customContentMap.plugins.main 
-        ? customContentMap.plugins.main 
+    const pluginsContent = customContentMap.plugins && customContentMap.plugins.main
+        ? customContentMap.plugins.main
         : '{{ descriptions.plugins|capitalize }}.';
-    
+
+    // Build API snippet for plugin with actual plugin name
+    const pluginApiSnippet = createApiSnippet('plg = jd.plugins[\'' + pluginName + '\']');
+
     const pluginsSidebarHTML = '<div class="expansion-panels">' +
         '<div class="' + pluginsPanelClass + '" data-panel-index="0">' +
         '<div class="expansion-panel-header">' +
@@ -98,6 +126,7 @@ function initializeWireframeController() {
         '<span class="expansion-panel-arrow">▼</span>' +
         '</div>' +
         '<div class="' + pluginsContentClass + '">' +
+        pluginApiSnippet +
         pluginsContent +
         '</div>' +
         '</div>' +
@@ -155,6 +184,43 @@ function initializeWireframeController() {
             clearInterval(cycleInterval);
             cycleInterval = null;
         }
+
+        // Reset API mode if active
+        if (apiModeActive) {
+            const apiButton = document.querySelector('.api-button');
+            if (apiButton) {
+                apiButton.click();
+            }
+        }
+
+        // Close any open sidebar
+        if (currentSidebar) {
+            wireframeSidebar.classList.remove('visible');
+            wireframeIcons.forEach(function(icon) {
+                if (!icon.classList.contains('api-button')) {
+                    icon.classList.remove('active');
+                }
+            });
+            currentSidebar = null;
+        }
+
+        // Reset all form inputs
+        const inputs = document.querySelectorAll('.wireframe-input');
+        inputs.forEach(function(input) {
+            input.value = '';
+        });
+
+        // Reset all checkboxes
+        const checkboxes = document.querySelectorAll('.wireframe-checkbox');
+        checkboxes.forEach(function(checkbox) {
+            checkbox.checked = false;
+        });
+
+        // Reset all dropdowns to first option
+        const selects = document.querySelectorAll('.wireframe-select');
+        selects.forEach(function(select) {
+            select.selectedIndex = 0;
+        });
 
         // Reset state
         autoCycling = true;
@@ -300,8 +366,8 @@ function initializeWireframeController() {
                 '<button class="wireframe-button">Create Viewer</button>'
             ],
             apiSnippets: [
-                '<div class="api-snippet-container"><pre class="api-snippet">ldr = jd.loaders[\'<i>source</i>\']\nldr.load()</pre><button class="api-learn-more" data-scroll-target="grid-userapi">Learn about API access</button></div>',
-                '<div class="api-snippet-container"><pre class="api-snippet">vc = jd.new_viewers[\'<i>viewer_type</i>\']\nvc.create()</pre><button class="api-learn-more" data-scroll-target="grid-userapi">Learn about API access</button></div>'
+                createApiSnippet('ldr = jd.loaders[\'<i>source</i>\']\nldr.load()'),
+                createApiSnippet('vc = jd.new_viewers[\'<i>viewer_type</i>\']\nvc.create()')
             ],
             learnMore: [
                 { text: 'Learn more about data import →', target: 'grid-loaders' },
@@ -312,7 +378,7 @@ function initializeWireframeController() {
         'save': {
             tabs: null,
             content: '{{ descriptions.export|capitalize }}.',
-            apiSnippet: '<div class="api-snippet-container"><pre class="api-snippet">plg = jd.plugins[\'Export\']</pre><button class="api-learn-more" data-scroll-target="grid-userapi">Learn about API access</button></div>',
+            apiSnippet: createApiSnippet('plg = jd.plugins[\'Export\']'),
             learnMore: { text: 'See export options →', target: 'grid-export' },
             scrollId: 'grid-export'
         },
@@ -323,8 +389,8 @@ function initializeWireframeController() {
                 '{{ descriptions.settings_units }}'
             ],
             apiSnippets: [
-                '<div class="api-snippet-container"><pre class="api-snippet">plg = jd.plugins[\'Plot Options\']</pre><button class="api-learn-more" data-scroll-target="grid-userapi">Learn about API access</button></div>',
-                '<div class="api-snippet-container"><pre class="api-snippet">plg = jd.plugins[\'Display Units\']</pre><button class="api-learn-more" data-scroll-target="grid-userapi">Learn about API access</button></div>'
+                createApiSnippet('plg = jd.plugins[\'Plot Options\']'),
+                createApiSnippet('plg = jd.plugins[\'Display Units\']')
             ],
             learnMore: [
                 { text: 'View plot customization →', target: 'grid-settings' },
@@ -340,9 +406,9 @@ function initializeWireframeController() {
                 '{{ descriptions.info_logger }}'
             ],
             apiSnippets: [
-                '<div class="api-snippet-container"><pre class="api-snippet">plg = jd.plugins[\'Metadata\']</pre><button class="api-learn-more" data-scroll-target="grid-userapi">Learn about API access</button></div>',
-                '<div class="api-snippet-container"><pre class="api-snippet">plg = jd.plugins[\'Plot Options\']\nplg.export_table()</pre><button class="api-learn-more" data-scroll-target="grid-userapi">Learn about API access</button></div>',
-                '<div class="api-snippet-container"><pre class="api-snippet">plg = jd.plugins[\'Logger\']\nplg.history</pre><button class="api-learn-more" data-scroll-target="grid-userapi">Learn about API access</button></div>'
+                createApiSnippet('plg = jd.plugins[\'Metadata\']'),
+                createApiSnippet('plg = jd.plugins[\'Plot Options\']\nplg.export_table()'),
+                createApiSnippet('plg = jd.plugins[\'Logger\']\nplg.history')
             ],
             learnMore: [
                 { text: 'Explore metadata tools →', target: 'grid-info' },
@@ -354,14 +420,14 @@ function initializeWireframeController() {
         'plugins': {
             tabs: null,
             content: pluginsSidebarHTML,
-            apiSnippet: '<div class="api-snippet-container"><pre class="api-snippet">plg = jd.plugins[\'<i>plugin_name</i>\']</pre><button class="api-learn-more" data-scroll-target="grid-userapi">Learn about API access</button></div>',
+            apiSnippet: createApiSnippet('plg = jd.plugins[\'' + pluginName + '\']'),
             learnMore: { text: 'Browse analysis plugins →', target: 'grid-plugins' },
             scrollId: 'grid-plugins'
         },
         'subsets': {
             tabs: null,
             content: '{{ descriptions.subsets|capitalize }}.',
-            apiSnippet: '<div class="api-snippet-container"><pre class="api-snippet">plg = jd.plugins[\'Subset Tools\']</pre><button class="api-learn-more" data-scroll-target="grid-userapi">Learn about API access</button></div>',
+            apiSnippet: createApiSnippet('plg = jd.plugins[\'Subset Tools\']'),
             learnMore: { text: 'Learn about subsets →', target: 'grid-subsets' },
             scrollId: 'grid-subsets'
         },
@@ -579,7 +645,8 @@ function initializeWireframeController() {
                 sidebarHtml += '<div class="wireframe-sidebar-body">';
 
                 // Build content with API snippet before content if available
-                const apiSnippet = data.apiSnippet || '';
+                // Skip API snippet for plugins sidebar since it's embedded in the expansion panel
+                const apiSnippet = (sidebarType !== 'plugins' && data.apiSnippet) ? data.apiSnippet : '';
                 sidebarHtml += '<div class="wireframe-sidebar-content">' + apiSnippet + data.content + '</div>';
 
                 // Build footer with learn more button
@@ -721,6 +788,14 @@ function initializeWireframeController() {
             }
         }
 
+        // Disable mouseover button if scroll-to is hidden
+        if (!showScrollTo && icon.classList.contains('mouseover-button')) {
+            icon.style.opacity = '0.3';
+            icon.style.cursor = 'not-allowed';
+            icon.style.pointerEvents = 'none';
+            icon.classList.add('disabled');
+        }
+
         icon.addEventListener('click', function() {
             stopAutoCycle();
 
@@ -822,14 +897,17 @@ function initializeWireframeController() {
             const action = step.action;
             const value = step.value;
             const data = sidebarContent_map[sidebarType];
-            
-            // Activate the sidebar first
-            activateSidebar(sidebarType);
-            
+
+            // Only activate the sidebar if it's different from the current one or if there's no action
+            // (actions can be performed on the already-active sidebar without reactivating)
+            if (!action || currentSidebar !== sidebarType) {
+                activateSidebar(sidebarType);
+            }
+
             // Execute action after sidebar is shown
             setTimeout(function() {
                 if (!autoCycling) return;
-                
+
                 if (action === 'open-panel') {
                     // Open expansion panel
                     const panel = wireframeSidebar.querySelector('.expansion-panel');
@@ -840,6 +918,20 @@ function initializeWireframeController() {
                             content.classList.add('expanded');
                         }
                     }
+                } else if (action === 'api-toggle') {
+                    // Toggle API mode
+                    const apiButton = document.querySelector('.api-button');
+                    if (apiButton) {
+                        apiButton.click();
+                    }
+                } else if (action === 'select-tab') {
+                    // Select a specific tab
+                    const tabs = wireframeSidebar.querySelectorAll('.wireframe-sidebar-tab');
+                    tabs.forEach(function(tab) {
+                        if (tab.textContent.trim() === value) {
+                            tab.click();
+                        }
+                    });
                 } else if (action === 'select-data' || action === 'select-aperture') {
                     // Select a dropdown value
                     const dropdowns = wireframeSidebar.querySelectorAll('select');
@@ -865,21 +957,35 @@ function initializeWireframeController() {
                         }
                     });
                 }
-                
+
                 // Move to next step
                 currentCycleIndex++;
                 if (currentCycleIndex < demoSequence.length) {
-                    setTimeout(autoCycleSidebars, 2000);
+                    const nextStep = demoSequence[currentCycleIndex];
+                    const nextDelay = nextStep.delay || 2000;
+                    setTimeout(autoCycleSidebars, nextDelay);
                 } else {
-                    // Demo sequence complete, loop
-                    currentCycleIndex = 0;
-                    setTimeout(autoCycleSidebars, 3000);
+                    // Demo sequence complete
+                    if (demoRepeat) {
+                        // Loop back to start
+                        currentCycleIndex = 0;
+                        const firstStep = demoSequence[0];
+                        const firstDelay = firstStep.delay || 2000;
+                        setTimeout(autoCycleSidebars, firstDelay + 1000);
+                    } else {
+                        // Stop and show restart button
+                        autoCycling = false;
+                        updateCycleControlButton();
+                    }
                 }
             }, 1000);
-            
+
             return;
         }
-        
+
+        // Check if auto-cycling is still enabled
+        if (!autoCycling) return;
+
         // Original logic for simple sidebar order
         const sidebarType = sidebarOrder[currentCycleIndex];
         const data = sidebarContent_map[sidebarType];
@@ -1121,3 +1227,55 @@ document.addEventListener('DOMContentLoaded', initializeWireframeController);
 
 // Initialize on custom event (for dynamically loaded wireframes in index.html)
 document.addEventListener('wireframe-loaded', initializeWireframeController);
+
+// Initialize grid item toggle buttons for landing page
+function initializeGridItemToggles() {
+    const gridItems = document.querySelectorAll('.grid-item');
+
+    gridItems.forEach(function(item) {
+        const content = item.querySelector('.grid-item-content');
+        if (!content) return;
+
+        // Check if content is taller than a threshold (e.g., 300px)
+        const contentHeight = content.scrollHeight;
+        const threshold = 300;
+
+        if (contentHeight > threshold) {
+            // Add has-toggle class
+            item.classList.add('has-toggle');
+
+            // Create toggle button
+            const toggleButton = document.createElement('button');
+            toggleButton.className = 'toggle-more';
+            toggleButton.textContent = 'Show More';
+
+            // Initially collapse the content
+            content.style.maxHeight = threshold + 'px';
+            content.style.overflow = 'hidden';
+
+            // Add click handler
+            toggleButton.addEventListener('click', function(e) {
+                e.stopPropagation();
+                const isExpanded = item.classList.contains('expanded');
+
+                if (isExpanded) {
+                    // Collapse
+                    item.classList.remove('expanded');
+                    content.style.maxHeight = threshold + 'px';
+                    toggleButton.textContent = 'Show More';
+                } else {
+                    // Expand
+                    item.classList.add('expanded');
+                    content.style.maxHeight = 'none';
+                    toggleButton.textContent = 'Show Less';
+                }
+            });
+
+            // Append button to grid item
+            item.appendChild(toggleButton);
+        }
+    });
+}
+
+// Initialize grid toggles when DOM is loaded
+document.addEventListener('DOMContentLoaded', initializeGridItemToggles);

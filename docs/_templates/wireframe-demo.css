@@ -34,6 +34,11 @@ html[data-theme="light"] {
     padding: 0px;
 }
 
+.wireframe-section.wireframe-docs {
+    width: 100%;
+    max-width: none;
+}
+
 .wireframe-title {
     text-align: center;
     font-size: 28px;
@@ -167,6 +172,10 @@ html[data-theme="light"] {
 
 .wireframe-toolbar-icon.mouseover-button:hover::after {
     opacity: 1;
+}
+
+.wireframe-toolbar-icon.mouseover-button.disabled::after {
+    display: none;
 }
 
 .wireframe-toolbar-divider {
@@ -694,6 +703,10 @@ html[data-theme="light"] .api-snippet {
     width: 100%;
 }
 
+html[data-theme="light"] .api-learn-more {
+    color: #ffffff !important;
+}
+
 .api-learn-more:hover {
     background: var(--button-hover);
     transform: translateY(-2px);
@@ -802,6 +815,26 @@ html[data-theme="light"] .jupyter-cell-prompt {
 
 html[data-theme="light"] .jupyter-cell-code {
     background: #f5f5f5;
+    color: #1a1a1a;
+}
+
+html[data-theme="light"] .wireframe-sidebar-tab {
+    color: #ffffff;
+}
+
+html[data-theme="light"] .wireframe-sidebar-tab.active {
+    color: #ffffff;
+}
+
+html[data-theme="light"] .wireframe-sidebar-footer-button {
+    color: #ffffff !important;
+}
+
+html[data-theme="light"] .wireframe-sidebar-footer-button:hover {
+    color: #ffffff !important;
+}
+
+html[data-theme="light"] .wireframe-cycle-control::after {
     color: #1a1a1a;
 }
 
