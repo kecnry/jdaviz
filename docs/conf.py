@@ -1200,7 +1200,23 @@ class WireframeDemoDirective(SphinxDirective):
         # Replace Jinja2 variables with actual values
         app_html_context = self.env.app.config.html_context
         jdaviz_version = app_html_context.get('jdaviz_version', '')
+        descriptions = app_html_context.get('descriptions', {})
+
+        # Replace version in HTML
         html_content = html_content.replace('{{ jdaviz_version }}', jdaviz_version)
+
+        # Replace version and descriptions in JS
+        js_content = js_content.replace('{{ jdaviz_version }}', jdaviz_version)
+        for key, value in descriptions.items():
+            # Escape single quotes in description values for JS strings
+            escaped_value = value.replace("'", "\\'")
+            # Replace with capitalize filter
+            capitalized_value = escaped_value.capitalize()
+            js_content = js_content.replace(
+                f'{{{{ descriptions.{key}|capitalize }}}}', capitalized_value
+            )
+            # Replace without filter
+            js_content = js_content.replace(f'{{{{ descriptions.{key} }}}}', escaped_value)
 
         # Construct the complete HTML with embedded CSS and JS
         complete_html = f'''
@@ -1227,18 +1243,54 @@ def copy_wireframe_assets(app, exception):
         template_dir = os.path.join(app.srcdir, '_templates')
         static_dir = os.path.join(app.outdir, '_static')
 
-        # Files to copy
-        files_to_copy = [
-            'wireframe-base.html',
+        # Get context variables for replacement
+        html_context = app.config.html_context
+        jdaviz_version = html_context.get('jdaviz_version', '')
+        descriptions = html_context.get('descriptions', {})
+
+        # Files to copy without processing
+        simple_files = [
             'wireframe-demo.css',
+        ]
+
+        # Files that need template variable replacement
+        template_files = [
+            'wireframe-base.html',
             'wireframe-controller.js'
         ]
 
-        for filename in files_to_copy:
+        # Copy simple files
+        for filename in simple_files:
             src = os.path.join(template_dir, filename)
             dst = os.path.join(static_dir, filename)
             if os.path.exists(src):
                 shutil.copy2(src, dst)
+
+        # Process and copy template files
+        for filename in template_files:
+            src = os.path.join(template_dir, filename)
+            dst = os.path.join(static_dir, filename)
+            if os.path.exists(src):
+                with open(src, 'r') as f:
+                    content = f.read()
+
+                # Replace jdaviz_version
+                content = content.replace('{{ jdaviz_version }}', jdaviz_version)
+
+                # Replace descriptions with and without filters
+                for key, value in descriptions.items():
+                    # Escape single quotes in description values for JS/HTML
+                    escaped_value = value.replace("'", "\\'")
+                    # Replace with capitalize filter
+                    capitalized_value = escaped_value.capitalize()
+                    content = content.replace(
+                        f'{{{{ descriptions.{key}|capitalize }}}}', capitalized_value
+                    )
+                    # Replace without filter
+                    content = content.replace(f'{{{{ descriptions.{key} }}}}', escaped_value)
+
+                with open(dst, 'w') as f:
+                    f.write(content)
 
 
 def setup(app):

@@ -273,6 +273,16 @@ function initializeWireframeController() {
     let currentSidebar = null;
     let apiModeActive = false;
 
+    // Show the API toggle button (it's hidden by default in HTML) and apply its icon
+    const apiButton = document.querySelector('.api-button');
+    if (apiButton) {
+        apiButton.style.display = 'block';
+        const iconName = apiButton.dataset.icon;
+        if (iconName && iconSvgs[iconName]) {
+            apiButton.style.backgroundImage = iconSvgs[iconName];
+        }
+    }
+
     // Helper function to update Jupyter cell API snippet
     function updateJupyterApiSnippet(data, tabIndex) {
         if (!apiModeActive) return;
@@ -867,6 +877,39 @@ function initializeWireframeController() {
 
         dataMenuClose.addEventListener('click', function() {
             dataMenuPopup.classList.remove('visible');
+        });
+
+        // Add scroll behavior for buttons inside the data menu popup
+        const dataMenuScrollLinks = dataMenuPopup.querySelectorAll('[data-scroll-target]');
+        dataMenuScrollLinks.forEach(function(link) {
+            link.addEventListener('click', function(e) {
+                stopAutoCycle();
+                const targetId = link.getAttribute('data-scroll-target');
+                const targetElement = document.querySelector('[data-grid-id="' + targetId + '"]');
+                if (targetElement) {
+                    // Close the popup
+                    dataMenuPopup.classList.remove('visible');
+
+                    // Scroll to target
+                    targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+                    // Highlight the target grid item
+                    setTimeout(function() {
+                        // Remove highlight from any previously highlighted items
+                        document.querySelectorAll('.grid-item.highlighted').forEach(function(el) {
+                            el.classList.remove('highlighted');
+                        });
+
+                        // Add highlight to current target
+                        targetElement.classList.add('highlighted');
+
+                        // Remove highlight after 3 seconds
+                        setTimeout(function() {
+                            targetElement.classList.remove('highlighted');
+                        }, 3000);
+                    }, 100);
+                }
+            });
         });
 
         // Close popup when clicking outside
