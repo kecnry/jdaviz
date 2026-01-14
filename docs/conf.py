@@ -1219,6 +1219,26 @@ class WireframeDemoDirective(SphinxDirective):
         auto_cycle = self.options.get('auto-cycle', 'false').lower() == 'true'
         cycle_steps_raw = self.options.get('cycle-steps', '')
         
+        # Parse cycle steps
+        cycle_steps_js = '[]'
+        if cycle_steps_raw:
+            steps = []
+            for step in cycle_steps_raw.split(';'):
+                step = step.strip()
+                if step:
+                    steps.append(f'"{step}"')
+            cycle_steps_js = '[' + ', '.join(steps) + ']'
+        
+        # Build initial sidebar JS
+        initial_sidebar_js = ''
+        if sidebar_id:
+            initial_sidebar_js = f'''sidebar.classList.add('visible');
+    var initialIcon = container.querySelector('.wireframe-toolbar-icon[data-sidebar="{sidebar_id}"]');
+    if (initialIcon) {{
+        initialIcon.classList.add('active');
+        currentSidebar = '{sidebar_id}';
+    }}'''
+        
         # Get custom sidebar content from directive body
         custom_sidebar_html = ''
         if self.content:
@@ -1610,8 +1630,8 @@ function initWireframe{wireframe_id.replace('-', '')}() {{
     var icons = container.querySelectorAll('.wireframe-toolbar-icon[data-sidebar]');
     var currentSidebar = null;
     var autoCycling = {str(auto_cycle).lower()};
+    var cycleSteps = {cycle_steps_js};
     var cycleIndex = 0;
-    var sidebarOrder = ['plugins'];
     var cycleInterval = null;
     var cycleState = 'stopped';
     
@@ -1645,8 +1665,9 @@ function initWireframe{wireframe_id.replace('-', '')}() {{
     if (cycleIconPause) cycleIconPause.style.backgroundImage = iconSvgs['pause'];
     if (cycleIconRestart) cycleIconRestart.style.backgroundImage = iconSvgs['restart'];
     
-    // Show initial sidebar
-    // Show initial sidebar\n    
+    // Show initial sidebar if specified
+    {initial_sidebar_js}
+    
     // Icon click handlers
     icons.forEach(function(icon) {{
         icon.addEventListener('click', function() {{
@@ -1666,6 +1687,36 @@ function initWireframe{wireframe_id.replace('-', '')}() {{
         }});
     }});
     
+    // Execute a cycle step
+    function executeCycleStep(step) {{
+        var parts = step.split(':');
+        var action = parts[0];
+        
+        if (action === 'click') {{
+            // Click a sidebar tab: click:plugins
+            var tabName = parts[1];
+            var targetIcon = container.querySelector('.wireframe-toolbar-icon[data-sidebar="' + tabName + '"]');
+            if (targetIcon && !targetIcon.classList.contains('active')) {{
+                targetIcon.click();
+            }}
+        }} else if (action === 'select') {{
+            // Select an option: select:element-id:optionIndex
+            var elementId = parts[1];
+            var optionIndex = parseInt(parts[2]) || 0;
+            var selectElement = document.getElementById(elementId);
+            if (selectElement && selectElement.tagName === 'SELECT') {{
+                selectElement.selectedIndex = optionIndex % selectElement.options.length;
+            }}
+        }} else if (action === 'tab') {{
+            // Click a subtab: tab:subtab-id
+            var tabId = parts[1];
+            var tabElement = container.querySelector('[data-tab="' + tabId + '"]');
+            if (tabElement) {{
+                tabElement.click();
+            }}
+        }}
+    }}
+    
     // Auto-cycle function
     function startAutoCycle() {{
         cycleState = 'playing';
@@ -1673,21 +1724,11 @@ function initWireframe{wireframe_id.replace('-', '')}() {{
         if (cycleIconPause) cycleIconPause.classList.remove('hidden');
         
         cycleInterval = setInterval(function() {{
-            var targetIcon = container.querySelector('.wireframe-toolbar-icon[data-sidebar="' + sidebarOrder[cycleIndex] + '"]');
-            if (targetIcon && !targetIcon.classList.contains('active')) {{
-                targetIcon.click();
+            if (cycleSteps.length > 0) {{
+                executeCycleStep(cycleSteps[cycleIndex]);
+                cycleIndex = (cycleIndex + 1) % cycleSteps.length;
             }}
-            
-            // Cycle through dropdown if present
-            var dataSelect = document.getElementById(wireframeId + '-data-select');
-            if (dataSelect) {{
-                setTimeout(function() {{
-                    dataSelect.selectedIndex = (dataSelect.selectedIndex + 1) % dataSelect.options.length;
-                }}, 1500);
-            }}
-            
-            cycleIndex = (cycleIndex + 1) % sidebarOrder.length;
-        }}, 3000);
+        }}, 2500);
     }}
     
     function stopAutoCycle() {{
@@ -1715,7 +1756,7 @@ function initWireframe{wireframe_id.replace('-', '')}() {{
         }});
     }}
     
-    if (autoCycling) {{
+    if (autoCycling && cycleSteps.length > 0) {{
         setTimeout(function() {{
             startAutoCycle();
             if (cycleControl) {{
