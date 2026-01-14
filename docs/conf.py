@@ -1165,8 +1165,64 @@ class PluginApiReferencesDirective(SphinxDirective):
             return [error_node]
 
 
+class WireframeDemoDirective(SphinxDirective):
+    """
+    Embed an interactive wireframe demonstration.
+    
+    This directive loads the wireframe HTML, CSS, and JavaScript from separate files
+    and injects them into the documentation page.
+    
+    Usage:
+        .. wireframe-demo::
+    """
+    
+    def run(self):
+        # Get the template directory
+        template_dir = os.path.join(self.env.srcdir, '_templates')
+        
+        # Read the three component files
+        try:
+            with open(os.path.join(template_dir, 'wireframe-base.html'), 'r') as f:
+                html_content = f.read()
+            
+            with open(os.path.join(template_dir, 'wireframe-demo.css'), 'r') as f:
+                css_content = f.read()
+            
+            with open(os.path.join(template_dir, 'wireframe-controller.js'), 'r') as f:
+                js_content = f.read()
+        except IOError as e:
+            error_node = nodes.error()
+            error_node += nodes.paragraph(
+                text=f'Error loading wireframe components: {e}'
+            )
+            return [error_node]
+        
+        # Replace Jinja2 variables with actual values
+        app_html_context = self.env.app.config.html_context
+        jdaviz_version = app_html_context.get('jdaviz_version', '')
+        html_content = html_content.replace('{{ jdaviz_version }}', jdaviz_version)
+        
+        # Construct the complete HTML with embedded CSS and JS
+        complete_html = f'''
+<style>
+{css_content}
+</style>
+
+{html_content}
+
+<script>
+{js_content}
+</script>
+'''
+        
+        # Create raw HTML node
+        raw_node = nodes.raw('', complete_html, format='html')
+        return [raw_node]
+
+
 def setup(app):
     app.add_directive('jdavizclihelp', JdavizCLIHelpDirective)
     app.add_directive('jdavizlanding', JdavizLandingPageDirective)
     app.add_directive('plugin-api-refs', PluginApiReferencesDirective)
     app.add_directive('plugin-availability', PluginAvailabilityDirective)
+    app.add_directive('wireframe-demo', WireframeDemoDirective)

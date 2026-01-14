@@ -4,6 +4,8 @@
 Aperture Photometry
 ********************
 
+.. wireframe-demo::
+
 .. plugin-availability::
 
 Perform photometry measurements within defined apertures.
