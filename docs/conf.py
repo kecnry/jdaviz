@@ -1176,21 +1176,31 @@ class WireframeDemoDirective(SphinxDirective):
         .. wireframe-demo::
            :demo: plugins
            :enable-only: plugins
-           :show-scroll-to: false
+           :plugin-name: Aperture Photometry
+           :plugin-panel-opened: false
+           :custom-content: plugins=<html content>
     
     Options:
-        demo: Custom demo sidebar order (comma-separated list). 
+        demo: Custom demo sidebar order (comma-separated list) or demo sequence. 
               Default: 'loaders,save,settings,info,plugins,subsets'
+              Can also specify actions like: 'plugins:open-panel,plugins:select-data=Image 2'
         enable-only: Only enable clicking on these sidebars (comma-separated). 
                      Others will be disabled. If not specified, all are enabled.
         show-scroll-to: Whether to show "Learn more" scroll-to buttons. 
                        Default: false
+        plugin-name: Name of the plugin expansion panel. Default: 'Data Analysis Plugin'
+        plugin-panel-opened: Whether plugin panel is open by default. Default: true
+        custom-content: Custom HTML content for sidebars. Format: sidebar=content or sidebar:tab=content
+                       Replaces the default description content.
     """
     
     option_spec = {
         'demo': str,
         'enable-only': str,
         'show-scroll-to': str,
+        'plugin-name': str,
+        'plugin-panel-opened': str,
+        'custom-content': str,
     }
 
     def run(self):
@@ -1239,11 +1249,14 @@ class WireframeDemoDirective(SphinxDirective):
         demo_order = self.options.get('demo', None)
         enable_only = self.options.get('enable-only', None)
         show_scroll_to = self.options.get('show-scroll-to', 'false').lower() == 'true'
+        plugin_name = self.options.get('plugin-name', None)
+        plugin_panel_opened = self.options.get('plugin-panel-opened', 'true').lower() == 'true'
+        custom_content = self.options.get('custom-content', None)
 
         # Build configuration object for JavaScript
         config_parts = []
         if demo_order:
-            # Convert comma-separated string to JavaScript array
+            # Parse demo sequence - can be simple list or actions
             demo_list = [f"'{s.strip()}'" for s in demo_order.split(',')]
             config_parts.append(f"customDemo: [{', '.join(demo_list)}]")
         
@@ -1253,6 +1266,19 @@ class WireframeDemoDirective(SphinxDirective):
             config_parts.append(f"enableOnly: [{', '.join(enable_list)}]")
         
         config_parts.append(f"showScrollTo: {str(show_scroll_to).lower()}")
+        
+        if plugin_name:
+            # Escape quotes in plugin name
+            escaped_name = plugin_name.replace("'", "\\'").replace('"', '\\"')
+            config_parts.append(f"pluginName: '{escaped_name}'")
+        
+        config_parts.append(f"pluginPanelOpened: {str(plugin_panel_opened).lower()}")
+        
+        if custom_content:
+            # Parse custom content (format: sidebar=content or sidebar:tab=content)
+            # For now, pass as string and parse in JS
+            escaped_content = custom_content.replace('\\', '\\\\').replace("'", "\\'").replace('\n', '\\n')
+            config_parts.append(f"customContent: '{escaped_content}'")
 
         # Inject configuration into the JavaScript
         config_js = f"window.wireframeConfig = {{ {', '.join(config_parts)} }};\n"

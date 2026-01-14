@@ -18,12 +18,110 @@ function initializeWireframeController() {
     const customDemo = config.customDemo || null;
     const enableOnly = config.enableOnly || null;
     const showScrollTo = config.showScrollTo !== undefined ? config.showScrollTo : true;
+    const pluginName = config.pluginName || 'Data Analysis Plugin';
+    const pluginPanelOpened = config.pluginPanelOpened !== undefined ? config.pluginPanelOpened : true;
+    const customContent = config.customContent || null;
+    
+    // Parse custom content if provided
+    let customContentMap = {};
+    if (customContent) {
+        // Simple parser for format: sidebar=content or sidebar:tab=content
+        // For now, assume single entry
+        const match = customContent.match(/^(\w+)(?::(\w+))?=(.+)$/);
+        if (match) {
+            const sidebar = match[1];
+            const tab = match[2];
+            const content = match[3];
+            if (!customContentMap[sidebar]) {
+                customContentMap[sidebar] = {};
+            }
+            if (tab) {
+                customContentMap[sidebar][tab] = content;
+            } else {
+                customContentMap[sidebar].main = content;
+            }
+        }
+    }
+    
+    // Parse demo sequence - can be simple list or actions
+    let demoSequence = [];
+    if (customDemo) {
+        customDemo.forEach(function(item) {
+            // Check if item contains action syntax (sidebar:action or sidebar:action=value)
+            if (item.includes(':')) {
+                const parts = item.split(':');
+                const sidebar = parts[0];
+                const actionPart = parts[1];
+                
+                // Check if action has a value
+                if (actionPart.includes('=')) {
+                    const actionParts = actionPart.split('=');
+                    demoSequence.push({
+                        sidebar: sidebar,
+                        action: actionParts[0],
+                        value: actionParts[1]
+                    });
+                } else {
+                    demoSequence.push({
+                        sidebar: sidebar,
+                        action: actionPart
+                    });
+                }
+            } else {
+                // Simple sidebar activation
+                demoSequence.push({
+                    sidebar: item,
+                    action: 'show'
+                });
+            }
+        });
+    }
+    
+    const sidebarOrder = demoSequence.length > 0 ? demoSequence.map(s => s.sidebar) : ['loaders', 'save', 'settings', 'info', 'plugins', 'subsets'];
 
     // Auto-cycling state
     let autoCycling = true;
     let cycleInterval = null;
     let currentCycleIndex = 0;
-    const sidebarOrder = customDemo || ['loaders', 'save', 'settings', 'info', 'plugins', 'subsets'];
+    
+    // Build plugins content dynamically based on configuration
+    const pluginsPanelClass = pluginPanelOpened ? 'expansion-panel expanded' : 'expansion-panel';
+    const pluginsContentClass = pluginPanelOpened ? 'expansion-panel-content expanded' : 'expansion-panel-content';
+    const pluginsContent = customContentMap.plugins && customContentMap.plugins.main 
+        ? customContentMap.plugins.main 
+        : '{{ descriptions.plugins|capitalize }}.';
+    
+    const pluginsSidebarHTML = '<div class="expansion-panels">' +
+        '<div class="' + pluginsPanelClass + '" data-panel-index="0">' +
+        '<div class="expansion-panel-header">' +
+        '<span class="expansion-panel-title">' + pluginName + '</span>' +
+        '<span class="expansion-panel-arrow">▼</span>' +
+        '</div>' +
+        '<div class="' + pluginsContentClass + '">' +
+        pluginsContent +
+        '</div>' +
+        '</div>' +
+        '<div class="expansion-panel disabled" data-panel-index="1">' +
+        '<div class="expansion-panel-header">' +
+        '<div class="expansion-panel-placeholder"></div>' +
+        '</div>' +
+        '</div>' +
+        '<div class="expansion-panel disabled" data-panel-index="2">' +
+        '<div class="expansion-panel-header">' +
+        '<div class="expansion-panel-placeholder"></div>' +
+        '</div>' +
+        '</div>' +
+        '<div class="expansion-panel disabled" data-panel-index="3">' +
+        '<div class="expansion-panel-header">' +
+        '<div class="expansion-panel-placeholder"></div>' +
+        '</div>' +
+        '</div>' +
+        '<div class="expansion-panel disabled" data-panel-index="4">' +
+        '<div class="expansion-panel-header">' +
+        '<div class="expansion-panel-placeholder"></div>' +
+        '</div>' +
+        '</div>' +
+        '</div>';
 
     function stopAutoCycle() {
         if (autoCycling) {
@@ -255,37 +353,7 @@ function initializeWireframeController() {
         },
         'plugins': {
             tabs: null,
-            content: '<div class="expansion-panels">' +
-                '<div class="expansion-panel expanded" data-panel-index="0">' +
-                '<div class="expansion-panel-header">' +
-                '<span class="expansion-panel-title">Data Analysis Plugin</span>' +
-                '<span class="expansion-panel-arrow">▼</span>' +
-                '</div>' +
-                '<div class="expansion-panel-content expanded">' +
-                '{{ descriptions.plugins|capitalize }}.' +
-                '</div>' +
-                '</div>' +
-                '<div class="expansion-panel disabled" data-panel-index="1">' +
-                '<div class="expansion-panel-header">' +
-                '<div class="expansion-panel-placeholder"></div>' +
-                '</div>' +
-                '</div>' +
-                '<div class="expansion-panel disabled" data-panel-index="2">' +
-                '<div class="expansion-panel-header">' +
-                '<div class="expansion-panel-placeholder"></div>' +
-                '</div>' +
-                '</div>' +
-                '<div class="expansion-panel disabled" data-panel-index="3">' +
-                '<div class="expansion-panel-header">' +
-                '<div class="expansion-panel-placeholder"></div>' +
-                '</div>' +
-                '</div>' +
-                '<div class="expansion-panel disabled" data-panel-index="4">' +
-                '<div class="expansion-panel-header">' +
-                '<div class="expansion-panel-placeholder"></div>' +
-                '</div>' +
-                '</div>' +
-                '</div>',
+            content: pluginsSidebarHTML,
             apiSnippet: '<div class="api-snippet-container"><pre class="api-snippet">plg = jd.plugins[\'<i>plugin_name</i>\']</pre><button class="api-learn-more" data-scroll-target="grid-userapi">Learn about API access</button></div>',
             learnMore: { text: 'Browse analysis plugins →', target: 'grid-plugins' },
             scrollId: 'grid-plugins'
@@ -747,6 +815,72 @@ function initializeWireframeController() {
     function autoCycleSidebars() {
         if (!autoCycling) return;
 
+        // Handle custom demo sequence with actions
+        if (demoSequence.length > 0 && currentCycleIndex < demoSequence.length) {
+            const step = demoSequence[currentCycleIndex];
+            const sidebarType = step.sidebar;
+            const action = step.action;
+            const value = step.value;
+            const data = sidebarContent_map[sidebarType];
+            
+            // Activate the sidebar first
+            activateSidebar(sidebarType);
+            
+            // Execute action after sidebar is shown
+            setTimeout(function() {
+                if (!autoCycling) return;
+                
+                if (action === 'open-panel') {
+                    // Open expansion panel
+                    const panel = wireframeSidebar.querySelector('.expansion-panel');
+                    if (panel && !panel.classList.contains('expanded')) {
+                        panel.classList.add('expanded');
+                        const content = panel.querySelector('.expansion-panel-content');
+                        if (content) {
+                            content.classList.add('expanded');
+                        }
+                    }
+                } else if (action === 'select-data' || action === 'select-aperture') {
+                    // Select a dropdown value
+                    const dropdowns = wireframeSidebar.querySelectorAll('select');
+                    dropdowns.forEach(function(dropdown) {
+                        const label = dropdown.previousElementSibling;
+                        if (label && label.textContent) {
+                            const labelText = label.textContent.trim().toLowerCase();
+                            if ((action === 'select-data' && labelText.includes('data')) ||
+                                (action === 'select-aperture' && labelText.includes('aperture'))) {
+                                // Find option by value
+                                const options = dropdown.querySelectorAll('option');
+                                options.forEach(function(option, index) {
+                                    if (option.textContent === value || option.value === value) {
+                                        dropdown.selectedIndex = index;
+                                        // Trigger visual feedback
+                                        dropdown.style.background = 'rgba(199, 93, 44, 0.3)';
+                                        setTimeout(function() {
+                                            dropdown.style.background = '';
+                                        }, 800);
+                                    }
+                                });
+                            }
+                        }
+                    });
+                }
+                
+                // Move to next step
+                currentCycleIndex++;
+                if (currentCycleIndex < demoSequence.length) {
+                    setTimeout(autoCycleSidebars, 2000);
+                } else {
+                    // Demo sequence complete, loop
+                    currentCycleIndex = 0;
+                    setTimeout(autoCycleSidebars, 3000);
+                }
+            }, 1000);
+            
+            return;
+        }
+        
+        // Original logic for simple sidebar order
         const sidebarType = sidebarOrder[currentCycleIndex];
         const data = sidebarContent_map[sidebarType];
 
