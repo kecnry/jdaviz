@@ -1,4 +1,18 @@
-document.addEventListener('DOMContentLoaded', function() {
+// Wireframe controller initialization function
+function initializeWireframeController() {
+    // Skip if already initialized or elements don't exist
+    if (document.querySelector('.wireframe-container')?._wireframeInitialized) {
+        return;
+    }
+
+    const container = document.querySelector('.wireframe-container');
+    if (!container) {
+        return;
+    }
+
+    // Mark as initialized
+    container._wireframeInitialized = true;
+
     // Auto-cycling state
     let autoCycling = true;
     let cycleInterval = null;
@@ -19,7 +33,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateCycleControlButton() {
         const cycleIconPlay = document.getElementById('cycle-icon-play');
         const cycleIconPause = document.getElementById('cycle-icon-pause');
-        
+
         if (autoCycling) {
             // Show play icon when cycling
             if (cycleIconPlay) cycleIconPlay.classList.remove('hidden');
@@ -37,15 +51,15 @@ document.addEventListener('DOMContentLoaded', function() {
             clearInterval(cycleInterval);
             cycleInterval = null;
         }
-        
+
         // Reset state
         autoCycling = true;
         currentCycleIndex = 0;
         hasStartedCycling = true;
-        
+
         // Update button
         updateCycleControlButton();
-        
+
         // Start cycling
         autoCycleSidebars();
     }
@@ -138,7 +152,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const cycleIconPlay = document.getElementById('cycle-icon-play');
     const cycleIconPause = document.getElementById('cycle-icon-pause');
     const cycleIconRestart = document.getElementById('cycle-icon-restart');
-    
+
     if (cycleIconPlay) cycleIconPlay.style.backgroundImage = iconSvgs['play'];
     if (cycleIconPause) cycleIconPause.style.backgroundImage = iconSvgs['pause'];
     if (cycleIconRestart) cycleIconRestart.style.backgroundImage = iconSvgs['restart'];
@@ -315,7 +329,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (data.tabs) {
                 const activeIndex = tabIndex !== undefined ? tabIndex : 0;
-                
+
                 // Build tabs
                 sidebarHtml += '<div class="wireframe-sidebar-tabs">' +
                     data.tabs.map((tab, i) =>
@@ -448,7 +462,7 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 // No tabs, build HTML string then set all at once
                 let sidebarHtml = '';
-                
+
                 // Start sidebar body wrapper
                 sidebarHtml += '<div class="wireframe-sidebar-body">';
 
@@ -780,10 +794,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const cycleIconPlay = document.getElementById('cycle-icon-play');
             const cycleIconPause = document.getElementById('cycle-icon-pause');
             const cycleIconRestart = document.getElementById('cycle-icon-restart');
-            
+
             if (cycleIconPlay) cycleIconPlay.classList.add('hidden');
             if (cycleIconRestart) cycleIconRestart.classList.add('hidden');
-            
+
             if (autoCycling) {
                 // Show pause icon and text when currently playing
                 if (cycleIconPause) cycleIconPause.classList.remove('hidden');
@@ -795,13 +809,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 cycleControlButton.setAttribute('data-flyout-text', 'restart demo');
             }
         });
-        
+
         cycleControlButton.addEventListener('mouseleave', function() {
             const cycleIconRestart = document.getElementById('cycle-icon-restart');
             if (cycleIconRestart) cycleIconRestart.classList.add('hidden');
             updateCycleControlButton();
         });
-        
+
         // Click: pause when playing, restart when paused
         cycleControlButton.addEventListener('click', function() {
             if (autoCycling) {
@@ -865,4 +879,10 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-});
+}
+
+// Initialize on DOMContentLoaded (for directive-embedded wireframes)
+document.addEventListener('DOMContentLoaded', initializeWireframeController);
+
+// Initialize on custom event (for dynamically loaded wireframes in index.html)
+document.addEventListener('wireframe-loaded', initializeWireframeController);

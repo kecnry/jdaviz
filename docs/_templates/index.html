@@ -758,9 +758,8 @@
 
         /* Wireframe styles loaded from external file */
     </style>
-    <link rel="stylesheet" href="_templates/wireframe-demo.css">
-    <style>
-    <script src="_templates/wireframe-controller.js"></script>
+    <link rel="stylesheet" href="{{ pathto('_static/wireframe-demo.css', 1) }}">
+    <script src="{{ pathto('_static/wireframe-controller.js', 1) }}"></script>
 </head>
 <body>
     <div class="container">
@@ -815,13 +814,17 @@
         <div id="wireframe-placeholder"></div>
         <script>
             // Load wireframe HTML
-            fetch("_templates/wireframe-base.html")
+            fetch("{{ pathto('_static/wireframe-base.html', 1) }}")
                 .then(response => response.text())
                 .then(html => {
                     // Replace Jinja2 variable with actual value
                     const version = "{{ jdaviz_version }}";
                     html = html.replace("{{ jdaviz_version }}", version);
                     document.getElementById("wireframe-placeholder").innerHTML = html;
+
+                    // Manually trigger wireframe initialization after HTML is injected
+                    // Dispatch a custom event that the controller can listen for
+                    document.dispatchEvent(new CustomEvent('wireframe-loaded'));
                 });
         </script>
 

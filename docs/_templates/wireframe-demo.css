@@ -1,3 +1,32 @@
+/* CSS Variables for wireframe styling */
+:root,
+html[data-theme="dark"],
+.wireframe-section {
+    --text-color: #ffffff;
+    --wireframe-bg: #003B4D;
+    --wireframe-border: rgba(255, 255, 255, 0.3);
+    --sidebar-bg: rgba(0, 97, 126, 0.4);
+    --sidebar-hover: rgba(0, 125, 164, 0.6);
+    --sidebar-active: #007DA4;
+    --tab-content-bg: rgba(0, 97, 126, 0.3);
+    --button-primary: #007DA4;
+    --button-hover: #C75109;
+    --grid-border: rgba(255, 255, 255, 0.3);
+}
+
+html[data-theme="light"] .wireframe-section {
+    --text-color: #1a1a1a;
+    --wireframe-bg: #ffffff;
+    --wireframe-border: rgba(0, 59, 77, 0.2);
+    --sidebar-bg: rgba(0, 125, 164, 0.15);
+    --sidebar-hover: rgba(0, 125, 164, 0.25);
+    --sidebar-active: #007DA4;
+    --tab-content-bg: rgba(0, 125, 164, 0.1);
+    --button-primary: #007DA4;
+    --button-hover: #C75109;
+    --grid-border: rgba(0, 97, 126, 0.3);
+}
+
 /* Wireframe Section */
 .wireframe-section {
     width: 90%;

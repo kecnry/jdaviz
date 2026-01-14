@@ -1168,26 +1168,26 @@ class PluginApiReferencesDirective(SphinxDirective):
 class WireframeDemoDirective(SphinxDirective):
     """
     Embed an interactive wireframe demonstration.
-    
+
     This directive loads the wireframe HTML, CSS, and JavaScript from separate files
     and injects them into the documentation page.
-    
+
     Usage:
         .. wireframe-demo::
     """
-    
+
     def run(self):
         # Get the template directory
         template_dir = os.path.join(self.env.srcdir, '_templates')
-        
+
         # Read the three component files
         try:
             with open(os.path.join(template_dir, 'wireframe-base.html'), 'r') as f:
                 html_content = f.read()
-            
+
             with open(os.path.join(template_dir, 'wireframe-demo.css'), 'r') as f:
                 css_content = f.read()
-            
+
             with open(os.path.join(template_dir, 'wireframe-controller.js'), 'r') as f:
                 js_content = f.read()
         except IOError as e:
@@ -1196,12 +1196,12 @@ class WireframeDemoDirective(SphinxDirective):
                 text=f'Error loading wireframe components: {e}'
             )
             return [error_node]
-        
+
         # Replace Jinja2 variables with actual values
         app_html_context = self.env.app.config.html_context
         jdaviz_version = app_html_context.get('jdaviz_version', '')
         html_content = html_content.replace('{{ jdaviz_version }}', jdaviz_version)
-        
+
         # Construct the complete HTML with embedded CSS and JS
         complete_html = f'''
 <style>
@@ -1214,10 +1214,31 @@ class WireframeDemoDirective(SphinxDirective):
 {js_content}
 </script>
 '''
-        
+
         # Create raw HTML node
         raw_node = nodes.raw('', complete_html, format='html')
         return [raw_node]
+
+
+def copy_wireframe_assets(app, exception):
+    """Copy wireframe files from _templates to _static for landing page."""
+    if exception is None and app.builder.name == 'html':
+        import shutil
+        template_dir = os.path.join(app.srcdir, '_templates')
+        static_dir = os.path.join(app.outdir, '_static')
+
+        # Files to copy
+        files_to_copy = [
+            'wireframe-base.html',
+            'wireframe-demo.css',
+            'wireframe-controller.js'
+        ]
+
+        for filename in files_to_copy:
+            src = os.path.join(template_dir, filename)
+            dst = os.path.join(static_dir, filename)
+            if os.path.exists(src):
+                shutil.copy2(src, dst)
 
 
 def setup(app):
@@ -1226,3 +1247,4 @@ def setup(app):
     app.add_directive('plugin-api-refs', PluginApiReferencesDirective)
     app.add_directive('plugin-availability', PluginAvailabilityDirective)
     app.add_directive('wireframe-demo', WireframeDemoDirective)
+    app.connect('build-finished', copy_wireframe_assets)
