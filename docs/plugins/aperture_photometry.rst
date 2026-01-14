@@ -5,6 +5,9 @@ Aperture Photometry
 ********************
 
 .. wireframe-demo::
+   :demo: plugins
+   :enable-only: plugins
+   :show-scroll-to: false
 
 .. plugin-availability::
 

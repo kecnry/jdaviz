@@ -1174,7 +1174,24 @@ class WireframeDemoDirective(SphinxDirective):
 
     Usage:
         .. wireframe-demo::
+           :demo: plugins
+           :enable-only: plugins
+           :show-scroll-to: false
+    
+    Options:
+        demo: Custom demo sidebar order (comma-separated list). 
+              Default: 'loaders,save,settings,info,plugins,subsets'
+        enable-only: Only enable clicking on these sidebars (comma-separated). 
+                     Others will be disabled. If not specified, all are enabled.
+        show-scroll-to: Whether to show "Learn more" scroll-to buttons. 
+                       Default: false
     """
+    
+    option_spec = {
+        'demo': str,
+        'enable-only': str,
+        'show-scroll-to': str,
+    }
 
     def run(self):
         # Get the template directory
@@ -1217,6 +1234,29 @@ class WireframeDemoDirective(SphinxDirective):
             )
             # Replace without filter
             js_content = js_content.replace(f'{{{{ descriptions.{key} }}}}', escaped_value)
+
+        # Process directive options
+        demo_order = self.options.get('demo', None)
+        enable_only = self.options.get('enable-only', None)
+        show_scroll_to = self.options.get('show-scroll-to', 'false').lower() == 'true'
+
+        # Build configuration object for JavaScript
+        config_parts = []
+        if demo_order:
+            # Convert comma-separated string to JavaScript array
+            demo_list = [f"'{s.strip()}'" for s in demo_order.split(',')]
+            config_parts.append(f"customDemo: [{', '.join(demo_list)}]")
+        
+        if enable_only:
+            # Convert comma-separated string to JavaScript array
+            enable_list = [f"'{s.strip()}'" for s in enable_only.split(',')]
+            config_parts.append(f"enableOnly: [{', '.join(enable_list)}]")
+        
+        config_parts.append(f"showScrollTo: {str(show_scroll_to).lower()}")
+
+        # Inject configuration into the JavaScript
+        config_js = f"window.wireframeConfig = {{ {', '.join(config_parts)} }};\n"
+        js_content = config_js + js_content
 
         # Construct the complete HTML with embedded CSS and JS
         complete_html = f'''

@@ -759,6 +759,12 @@
         /* Wireframe styles loaded from external file */
     </style>
     <link rel="stylesheet" href="{{ pathto('_static/wireframe-demo.css', 1) }}">
+    <script>
+        // Configure wireframe for landing page (show all features)
+        window.wireframeConfig = {
+            showScrollTo: true
+        };
+    </script>
     <script src="{{ pathto('_static/wireframe-controller.js', 1) }}"></script>
 </head>
 <body>

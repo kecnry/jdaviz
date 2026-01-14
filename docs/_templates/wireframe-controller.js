@@ -13,11 +13,17 @@ function initializeWireframeController() {
     // Mark as initialized
     container._wireframeInitialized = true;
 
+    // Get configuration from window or use defaults
+    const config = window.wireframeConfig || {};
+    const customDemo = config.customDemo || null;
+    const enableOnly = config.enableOnly || null;
+    const showScrollTo = config.showScrollTo !== undefined ? config.showScrollTo : true;
+
     // Auto-cycling state
     let autoCycling = true;
     let cycleInterval = null;
     let currentCycleIndex = 0;
-    const sidebarOrder = ['loaders', 'save', 'settings', 'info', 'plugins', 'subsets'];
+    const sidebarOrder = customDemo || ['loaders', 'save', 'settings', 'info', 'plugins', 'subsets'];
 
     function stopAutoCycle() {
         if (autoCycling) {
@@ -354,7 +360,7 @@ function initializeWireframeController() {
 
                 // Build footer with learn more button
                 const learnMoreData = data.learnMore && data.learnMore[activeIndex] ? data.learnMore[activeIndex] : null;
-                if (learnMoreData) {
+                if (learnMoreData && showScrollTo) {
                     sidebarHtml += '<div class="wireframe-sidebar-footer">' +
                         '<button class="wireframe-sidebar-footer-button" data-scroll-target="' + learnMoreData.target + '">' + learnMoreData.text + '</button>' +
                         '</div>';
@@ -480,7 +486,7 @@ function initializeWireframeController() {
 
                 // Build footer with learn more button
                 const learnMoreData = data.learnMore || null;
-                if (learnMoreData) {
+                if (learnMoreData && showScrollTo) {
                     sidebarHtml += '<div class="wireframe-sidebar-footer">' +
                         '<button class="wireframe-sidebar-footer-button" data-scroll-target="' + learnMoreData.target + '">' + learnMoreData.text + '</button>' +
                         '</div>';
@@ -575,6 +581,16 @@ function initializeWireframeController() {
     }
 
     wireframeIcons.forEach(function(icon) {
+        // Disable icons not in enableOnly list
+        if (enableOnly) {
+            const sidebarType = icon.dataset.sidebar;
+            if (sidebarType && !enableOnly.includes(sidebarType)) {
+                icon.style.opacity = '0.3';
+                icon.style.cursor = 'not-allowed';
+                icon.style.pointerEvents = 'none';
+            }
+        }
+
         icon.addEventListener('click', function() {
             stopAutoCycle();
 
