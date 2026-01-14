@@ -1,0 +1,35 @@
+<!-- Wireframe Demo Base Template -->
+<!-- This is a reusable wireframe component that can be included in both index.html and RST docs -->
+<div class="wireframe-demo-container" id="wireframe-container-{id}">
+    <div class="wireframe-cycle-control" id="wireframe-cycle-control-{id}" data-flyout-text="Play" style="display: none;">
+        <div class="wireframe-cycle-control-icon" id="wireframe-cycle-icon-play-{id}"></div>
+        <div class="wireframe-cycle-control-icon hidden" id="wireframe-cycle-icon-pause-{id}"></div>
+        <div class="wireframe-cycle-control-icon hidden" id="wireframe-cycle-icon-restart-{id}"></div>
+    </div>
+    
+    <div class="wireframe-toolbar" id="wireframe-toolbar-{id}">
+        <!-- Toolbar icons will be populated by JavaScript -->
+    </div>
+    
+    <div class="wireframe-main">
+        <div class="wireframe-sidebar" id="wireframe-sidebar-{id}">
+            <div class="wireframe-sidebar-body">
+                <div class="wireframe-sidebar-content" id="wireframe-sidebar-content-{id}">
+                    <!-- Sidebar content will be populated by JavaScript -->
+                </div>
+                <div class="wireframe-sidebar-footer" id="wireframe-sidebar-footer-{id}" style="display: none;">
+                    <small>Learn more in documentation</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="wireframe-viewer">
+            <div class="viewer-content" id="wireframe-viewer-content-{id}">
+                Viewer Area
+                <div class="data-menu-legend" id="wireframe-legend-{id}">
+                    <!-- Legend items will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

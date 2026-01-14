@@ -1167,27 +1167,30 @@ class PluginApiReferencesDirective(SphinxDirective):
 
 class WireframeDemoDirective(SphinxDirective):
     """
-    Create an interactive wireframe demo that can be embedded in RST files.
+    Create an interactive wireframe demo using shared HTML/JS components.
     
-    This directive creates a wireframe similar to the one on the landing page,
-    but with customization options for demonstration purposes.
+    This directive generates a container and JavaScript initialization call
+    that uses the shared wireframe-controller.js and wireframe-demo.css files.
     
     Options:
         :disabled-tabs: Space-separated list of tab IDs to disable (e.g., "loaders save")
         :show-footer: Boolean to show/hide the "learn more" footer (default: true)
         :legend-entries: Comma-separated list of legend entries (e.g., "Image 1, Image 2, Subset 1")
-        :sidebar-content: ID of sidebar to show by default
-        :viewer-content: Custom content for viewer area
-        :auto-cycle: Boolean to enable auto-cycling through sidebars (default: false)
-        :cycle-script: Custom JavaScript for animation cycling
+        :sidebar-id: Which tab to activate on load (e.g., "plugins")
+        :sidebar-content: Custom HTML content for sidebar
+        :viewer-content: Custom content for viewer area  
+        :auto-cycle: Boolean to enable auto-cycling (default: false)
+        :cycle-steps: Semicolon-separated cycle steps (e.g., "click:plugins;select:dropdown:1")
     
     Example::
     
         .. wireframe-demo::
            :disabled-tabs: loaders save settings
            :legend-entries: Image 1, Image 2, Subset 1
-           :sidebar-content: plugins
-           :show-footer: false
+           :sidebar-id: plugins
+           :sidebar-content: <h3>Aperture Photometry</h3><select id="data-select"><option>Image 1</option></select>
+           :cycle-steps: click:plugins;select:data-select:1
+           :auto-cycle: true
     """
     
     has_content = True
@@ -1208,6 +1211,7 @@ class WireframeDemoDirective(SphinxDirective):
         
         # Generate unique ID for this wireframe instance
         wireframe_id = f"wireframe-{uuid.uuid4().hex[:8]}"
+        container_id = f"wireframe-container-{wireframe_id}"
         
         # Parse options
         disabled_tabs = self.options.get('disabled-tabs', '').split()
@@ -1220,562 +1224,54 @@ class WireframeDemoDirective(SphinxDirective):
         cycle_steps_raw = self.options.get('cycle-steps', '')
         
         # Parse cycle steps
-        cycle_steps_js = '[]'
+        cycle_steps = []
         if cycle_steps_raw:
-            steps = []
             for step in cycle_steps_raw.split(';'):
                 step = step.strip()
                 if step:
-                    steps.append(f'"{step}"')
-            cycle_steps_js = '[' + ', '.join(steps) + ']'
-        
-        # Build initial sidebar JS
-        initial_sidebar_js = ''
-        if sidebar_id:
-            initial_sidebar_js = f'''sidebar.classList.add('visible');
-    var initialIcon = container.querySelector('.wireframe-toolbar-icon[data-sidebar="{sidebar_id}"]');
-    if (initialIcon) {{
-        initialIcon.classList.add('active');
-        currentSidebar = '{sidebar_id}';
-    }}'''
+                    cycle_steps.append(step)
         
         # Get custom sidebar content from directive body
-        custom_sidebar_html = ''
         if self.content:
             from docutils.core import publish_parts
-            custom_sidebar_html = publish_parts(
+            sidebar_content = publish_parts(
                 '\n'.join(self.content),
                 writer_name='html'
             )['body']
         
-        # Build the HTML for the wireframe
-        html_parts = []
+        # Build configuration object
+        config = {
+            'disabledTabs': disabled_tabs,
+            'showFooter': show_footer,
+            'legendEntries': legend_entries,
+            'sidebarId': sidebar_id,
+            'sidebarContent': sidebar_content,
+            'viewerContent': viewer_content,
+            'autoCycle': auto_cycle,
+            'cycleSteps': cycle_steps
+        }
         
-        # Add styles (reusing from index.html but scoped to this wireframe) with proper legend styling
-        html_parts.append(f'''
-<style>
-/* Wireframe Demo Styles - Scoped to #{wireframe_id} */
-#{wireframe_id} .wireframe-demo-container {{
-    background: var(--wireframe-bg, #003B4D);
-    border: 2px solid var(--wireframe-border, rgba(255, 255, 255, 0.3));
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
-    position: relative;
-    margin: 40px 0;
-}}
-
-html[data-theme="light"] #{wireframe_id} .wireframe-demo-container {{
-    background: #ffffff;
-    border-color: rgba(0, 59, 77, 0.2);
-}}
-
-#{wireframe_id} .wireframe-cycle-control {{
-    position: absolute;
-    bottom: 12px;
-    right: 12px;
-    width: 44px;
-    height: 44px;
-    background: rgba(0, 59, 77, 0.9);
-    border: 2px solid var(--wireframe-border, rgba(255, 255, 255, 0.3));
-    border-radius: 8px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-    z-index: 100;
-}}
-
-#{wireframe_id} .wireframe-cycle-control:hover {{
-    background: rgba(0, 125, 164, 0.9);
-    transform: scale(1.05);
-}}
-
-#{wireframe_id} .wireframe-cycle-control-icon {{
-    width: 24px;
-    height: 24px;
-    background-size: contain;
-    background-position: center;
-    background-repeat: no-repeat;
-    transition: opacity 0.2s ease;
-}}
-
-#{wireframe_id} .wireframe-cycle-control-icon.hidden {{
-    opacity: 0;
-    position: absolute;
-}}
-
-#{wireframe_id} .wireframe-cycle-control::after {{
-    content: attr(data-flyout-text);
-    position: absolute;
-    right: 100%;
-    top: 50%;
-    transform: translateY(-50%);
-    margin-right: 8px;
-    font-size: 13px;
-    font-weight: 600;
-    color: white;
-    white-space: nowrap;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    pointer-events: none;
-}}
-
-#{wireframe_id} .wireframe-cycle-control:hover::after {{
-    opacity: 1;
-}}
-
-#{wireframe_id} .wireframe-toolbar {{
-    background: #003B4D;
-    padding: 0;
-    display: flex;
-    align-items: stretch;
-    gap: 0;
-    border-bottom: 2px solid var(--wireframe-border, rgba(255, 255, 255, 0.3));
-    height: 72px;
-}}
-
-#{wireframe_id} .wireframe-toolbar-icon {{
-    width: 48px;
-    height: 100%;
-    background-color: transparent;
-    background-size: 24px 24px;
-    background-position: center;
-    background-repeat: no-repeat;
-    border: none;
-    border-radius: 0;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 1;
-}}
-
-#{wireframe_id} .wireframe-toolbar-icon.disabled {{
-    opacity: 0.3;
-    cursor: not-allowed;
-    pointer-events: none;
-}}
-
-#{wireframe_id} .wireframe-toolbar-icon:not(.disabled):hover {{
-    background-color: rgba(0, 125, 164, 0.3);
-}}
-
-#{wireframe_id} .wireframe-toolbar-icon.active {{
-    background-color: var(--button-hover, #C75109);
-}}
-
-#{wireframe_id} .wireframe-toolbar-divider {{
-    width: 12px;
-    height: 100%;
-    background: transparent;
-    position: relative;
-}}
-
-#{wireframe_id} .wireframe-toolbar-divider::after {{
-    content: '';
-    position: absolute;
-    left: 50%;
-    top: 20%;
-    bottom: 20%;
-    width: 1px;
-    background: rgba(255, 255, 255, 0.3);
-    transform: translateX(-50%);
-}}
-
-#{wireframe_id} .wireframe-toolbar-spacer {{
-    flex: 1;
-}}
-
-#{wireframe_id} .wireframe-main {{
-    display: flex;
-    height: 400px;
-}}
-
-#{wireframe_id} .wireframe-sidebar {{
-    width: 0;
-    background: rgba(0, 97, 126, 0.4);
-    overflow: hidden;
-    transition: width 0.3s ease;
-    display: flex;
-    flex-direction: column;
-    border-right: 2px solid var(--wireframe-border, rgba(255, 255, 255, 0.3));
-    height: 100%;
-}}
-
-#{wireframe_id} .wireframe-sidebar.visible {{
-    width: 300px;
-}}
-
-#{wireframe_id} .wireframe-sidebar-body {{
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    overflow: hidden;
-}}
-
-#{wireframe_id} .wireframe-sidebar-content {{
-    padding: 16px;
-    color: white;
-    font-size: 14px;
-    line-height: 1.6;
-    flex: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
-}}
-
-#{wireframe_id} .wireframe-sidebar-content h3 {{
-    font-size: 18px;
-    font-weight: 700;
-    margin-bottom: 16px;
-    margin-top: 0;
-}}
-
-#{wireframe_id} .wireframe-sidebar-content select,
-#{wireframe_id} .wireframe-sidebar-content input {{
-    width: 100%;
-    padding: 8px;
-    margin: 8px 0;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 4px;
-    color: white;
-    font-size: 14px;
-}}
-
-#{wireframe_id} .wireframe-sidebar-content select option {{
-    background: #003B4D;
-    color: white;
-}}
-
-#{wireframe_id} .wireframe-sidebar-footer {{
-    padding: 12px 16px;
-    background: rgba(0, 97, 126, 0.4);
-    border-top: 1px solid var(--wireframe-border, rgba(255, 255, 255, 0.3));
-    flex-shrink: 0;
-}}
-
-#{wireframe_id} .wireframe-viewer {{
-    flex: 1;
-    background: rgba(0, 97, 126, 0.4);
-    display: flex;
-    flex-direction: column;
-    position: relative;
-}}
-
-#{wireframe_id} .viewer-content {{
-    flex: 1;
-    position: relative;
-    background: rgba(0, 97, 126, 0.4);
-    opacity: 0.5;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 18px;
-    font-weight: 600;
-}}
-
-#{wireframe_id} .data-menu-legend {{
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    z-index: 10;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-}}
-
-#{wireframe_id} .legend-item {{
-    display: flex;
-    flex-direction: row-reverse;
-    align-items: center;
-    gap: 8px;
-    background: rgba(0, 59, 77, 0.95);
-    padding: 6px 12px;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    width: fit-content;
-    margin-bottom: 4px;
-}}
-
-#{wireframe_id} .legend-item:hover {{
-    background: rgba(0, 75, 95, 0.95);
-    border-color: rgba(255, 255, 255, 0.4);
-}}
-
-#{wireframe_id} .legend-icon {{
-    width: 20px;
-    height: 20px;
-    flex-shrink: 0;
-    display: block;
-}}
-
-#{wireframe_id} .legend-text {{
-    color: white;
-    font-size: 13px;
-    font-weight: 500;
-    white-space: nowrap;
-    max-width: 0;
-    overflow: hidden;
-    opacity: 0;
-    transition: all 0.3s ease;
-}}
-
-#{wireframe_id} .legend-item:hover .legend-text {{
-    max-width: 200px;
-    opacity: 1;
-}}
-</style>
-''')
+        # Read the base HTML template
+        import os
+        template_path = os.path.join(os.path.dirname(__file__), '_templates', 'wireframe-base.html')
+        with open(template_path, 'r') as f:
+            template_html = f.read()
         
-        # Build toolbar with optional disabled tabs
-        toolbar_icons = [
-            ('loaders', 'database-import', 'Import Data'),
-            ('save', 'download', 'Export'),
-            ('divider', '', ''),
-            ('settings', 'tune', 'Plot Options'),
-            ('info', 'information', 'Metadata'),
-            ('plugins', 'wrench', 'Plugins'),
-            ('subsets', 'selection', 'Subsets'),
-        ]
+        # Replace {id} placeholders with actual ID
+        html_output = template_html.replace('{id}', wireframe_id)
         
-        toolbar_html = '<div class="wireframe-toolbar">'
-        for tab_id, icon, title in toolbar_icons:
-            if tab_id == 'divider':
-                toolbar_html += '<div class="wireframe-toolbar-divider"></div>'
-            else:
-                disabled_class = ' disabled' if tab_id in disabled_tabs else ''
-                data_sidebar = f' data-sidebar="{tab_id}"' if tab_id not in disabled_tabs else ''
-                toolbar_html += f'<div class="wireframe-toolbar-icon{disabled_class}" {data_sidebar} data-icon="{icon}" title="{title}"></div>'
-        toolbar_html += '<div class="wireframe-toolbar-spacer"></div>'
-        toolbar_html += '</div>'
-        
-        # Build sidebar content
-        sidebar_html = '<div class="wireframe-sidebar" id="' + wireframe_id + '-sidebar"><div class="wireframe-sidebar-body"><div class="wireframe-sidebar-content">'
-        if custom_sidebar_html:
-            sidebar_html += custom_sidebar_html
-        elif sidebar_content:
-            # Use provided HTML content directly
-            sidebar_html += sidebar_content
-        else:
-            sidebar_html += '<p>Click toolbar icons to view sidebar content</p>'
-        
-        sidebar_html += '</div>'
-        
-        if show_footer:
-            sidebar_html += '<div class="wireframe-sidebar-footer"><small>Learn more in documentation</small></div>'
-        
-        sidebar_html += '</div></div>'
-        
-        # Build viewer content with legend (matching index.html structure)
-        viewer_html = '<div class="wireframe-viewer"><div class="viewer-content">Viewer Area'
-        
-        if legend_entries:
-            viewer_html += '<div class="data-menu-legend">'
-            colors = ['#007DA4', '#00B4E6', '#C75109', '#4CAF50', '#FFC107']
-            for i, entry in enumerate(legend_entries):
-                color = colors[i % len(colors)]
-                viewer_html += f'''<div class="legend-item">
-                    <svg class="legend-icon" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                        <rect width="20" height="20" rx="3" fill="{color}"/>
-                    </svg>
-                    <span class="legend-text">{entry}</span>
-                </div>'''
-            viewer_html += '</div>'
-        
-        viewer_html += '</div></div>'
-        
-        # Combine everything
-        html_parts.append(f'<div id="{wireframe_id}" class="wireframe-demo">')
-        html_parts.append('<div class="wireframe-demo-container">')
-        
-        # Add cycle control button if auto-cycle is enabled
-        if auto_cycle:
-            html_parts.append(f'''
-<div class="wireframe-cycle-control" id="{wireframe_id}-cycle-control" data-flyout-text="Play">
-    <div class="wireframe-cycle-control-icon" id="{wireframe_id}-cycle-icon-play"></div>
-    <div class="wireframe-cycle-control-icon hidden" id="{wireframe_id}-cycle-icon-pause"></div>
-    <div class="wireframe-cycle-control-icon hidden" id="{wireframe_id}-cycle-icon-restart"></div>
-</div>
-''')
-        
-        html_parts.append(toolbar_html)
-        html_parts.append('<div class="wireframe-main">')
-        html_parts.append(sidebar_html)
-        html_parts.append(viewer_html)
-        html_parts.append('</div>')
-        html_parts.append('</div>')
-        
-        # Add JavaScript for interactivity with icon SVGs
-        html_parts.append(f'''
+        # Add initialization script
+        config_json = json.dumps(config).replace('</script>', r'<\/script>')
+        html_output += f"""
 <script>
-// Wait for DOM to be fully loaded
-if (document.readyState === 'loading') {{
-    document.addEventListener('DOMContentLoaded', function() {{
-        initWireframe{wireframe_id.replace('-', '')}();
-    }});
-}} else {{
-    initWireframe{wireframe_id.replace('-', '')}();
-}}
-
-function initWireframe{wireframe_id.replace('-', '')}() {{
-    var wireframeId = '{wireframe_id}';
-    var container = document.getElementById(wireframeId);
-    var sidebar = document.getElementById(wireframeId + '-sidebar');
-    var icons = container.querySelectorAll('.wireframe-toolbar-icon[data-sidebar]');
-    var currentSidebar = null;
-    var autoCycling = {str(auto_cycle).lower()};
-    var cycleSteps = {cycle_steps_js};
-    var cycleIndex = 0;
-    var cycleInterval = null;
-    var cycleState = 'stopped';
-    
-    // Icon SVGs (from index.html)
-    var iconSvgs = {{
-        'play': "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><path fill=\"white\" d=\"M8,5.14V19.14L19,12.14L8,5.14Z\" /></svg>')",
-        'pause': "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><path fill=\"white\" d=\"M14,19H18V5H14M6,19H10V5H6V19Z\" /></svg>')",
-        'restart': "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><path fill=\"white\" d=\"M12,4C14.1,4 16.1,4.8 17.6,6.3C20.7,9.4 20.7,14.5 17.6,17.6C15.8,19.5 13.3,20.2 10.9,19.9L11.4,17.9C13.1,18.1 14.9,17.5 16.2,16.2C18.5,13.9 18.5,10.1 16.2,7.7C15.1,6.6 13.5,6 12,6V10.6L7,5.6L12,0.6V4M6.3,17.6C3.7,15 3.3,11 5.1,7.9L6.6,9.4C5.5,11.6 5.9,14.4 7.8,16.2C8.3,16.7 8.9,17.1 9.6,17.4L9,19.4C8,19 7.1,18.4 6.3,17.6Z\" /></svg>')",
-        'database-import': "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><path fill=\"white\" d=\"M19,19V5H5V19H19M19,3A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5C3,3.89 3.9,3 5,3H19M11,7H13V11H17V13H13V17H11V13H7V11H11V7Z\" /></svg>')",
-        'download': "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><path fill=\"white\" d=\"M15,9H5V5H15M12,19A3,3 0 0,1 9,16A3,3 0 0,1 12,13A3,3 0 0,1 15,16A3,3 0 0,1 12,19M17,3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V7L17,3Z\" /></svg>')",
-        'tune': "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><path fill=\"white\" d=\"M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.67 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z\" /></svg>')",
-        'information': "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><path fill=\"white\" d=\"M11,9H13V7H11M12,20C7.59,20 4,16.41 4,12C4,7.59 7.59,4 12,4C16.41,4 20,7.59 20,12C20,16.41 16.41,20 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M11,17H13V11H11V17Z\" /></svg>')",
-        'wrench': "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><path fill=\"white\" d=\"M8 13C6.14 13 4.59 14.28 4.14 16H2V18H4.14C4.59 19.72 6.14 21 8 21S11.41 19.72 11.86 18H22V16H11.86C11.41 14.28 9.86 13 8 13M8 19C6.9 19 6 18.1 6 17C6 15.9 6.9 15 8 15S10 15.9 10 17C10 18.1 9.1 19 8 19M19.86 6C19.41 4.28 17.86 3 16 3S12.59 4.28 12.14 6H2V8H12.14C12.59 9.72 14.14 11 16 11S19.41 9.72 19.86 8H22V6H19.86M16 9C14.9 9 14 8.1 14 7C14 5.9 14.9 5 16 5S18 5.9 18 7C18 8.1 17.1 9 16 9Z\" /></svg>')",
-        'selection': "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><path fill=\"white\" d=\"M2 2H8V4H4V8H2V2M2 16H4V20H8V22H2V16M16 2H22V8H20V4H16V2M20 16H22V22H16V20H20V16Z\" /></svg>')"
-    }};
-    
-    // Apply SVG backgrounds to icons
-    icons.forEach(function(icon) {{
-        var iconName = icon.dataset.icon;
-        if (iconName && iconSvgs[iconName]) {{
-            icon.style.backgroundImage = iconSvgs[iconName];
-        }}
-    }});
-    
-    // Apply SVG backgrounds to cycle control icons
-    var cycleIconPlay = document.getElementById(wireframeId + '-cycle-icon-play');
-    var cycleIconPause = document.getElementById(wireframeId + '-cycle-icon-pause');
-    var cycleIconRestart = document.getElementById(wireframeId + '-cycle-icon-restart');
-    
-    if (cycleIconPlay) cycleIconPlay.style.backgroundImage = iconSvgs['play'];
-    if (cycleIconPause) cycleIconPause.style.backgroundImage = iconSvgs['pause'];
-    if (cycleIconRestart) cycleIconRestart.style.backgroundImage = iconSvgs['restart'];
-    
-    // Show initial sidebar if specified
-    {initial_sidebar_js}
-    
-    // Icon click handlers
-    icons.forEach(function(icon) {{
-        icon.addEventListener('click', function() {{
-            var sidebarType = icon.getAttribute('data-sidebar');
-            if (!sidebarType) return;
-            
-            if (currentSidebar === sidebarType) {{
-                sidebar.classList.remove('visible');
-                icon.classList.remove('active');
-                currentSidebar = null;
-            }} else {{
-                icons.forEach(function(i) {{ i.classList.remove('active'); }});
-                sidebar.classList.add('visible');
-                icon.classList.add('active');
-                currentSidebar = sidebarType;
-            }}
-        }});
-    }});
-    
-    // Execute a cycle step
-    function executeCycleStep(step) {{
-        var parts = step.split(':');
-        var action = parts[0];
-        
-        if (action === 'click') {{
-            // Click a sidebar tab: click:plugins
-            var tabName = parts[1];
-            var targetIcon = container.querySelector('.wireframe-toolbar-icon[data-sidebar="' + tabName + '"]');
-            if (targetIcon && !targetIcon.classList.contains('active')) {{
-                targetIcon.click();
-            }}
-        }} else if (action === 'select') {{
-            // Select an option: select:element-id:optionIndex
-            var elementId = parts[1];
-            var optionIndex = parseInt(parts[2]) || 0;
-            var selectElement = document.getElementById(elementId);
-            if (selectElement && selectElement.tagName === 'SELECT') {{
-                selectElement.selectedIndex = optionIndex % selectElement.options.length;
-            }}
-        }} else if (action === 'tab') {{
-            // Click a subtab: tab:subtab-id
-            var tabId = parts[1];
-            var tabElement = container.querySelector('[data-tab="' + tabId + '"]');
-            if (tabElement) {{
-                tabElement.click();
-            }}
-        }}
-    }}
-    
-    // Auto-cycle function
-    function startAutoCycle() {{
-        cycleState = 'playing';
-        if (cycleIconPlay) cycleIconPlay.classList.add('hidden');
-        if (cycleIconPause) cycleIconPause.classList.remove('hidden');
-        
-        cycleInterval = setInterval(function() {{
-            if (cycleSteps.length > 0) {{
-                executeCycleStep(cycleSteps[cycleIndex]);
-                cycleIndex = (cycleIndex + 1) % cycleSteps.length;
-            }}
-        }}, 2500);
-    }}
-    
-    function stopAutoCycle() {{
-        if (cycleInterval) {{
-            clearInterval(cycleInterval);
-            cycleInterval = null;
-        }}
-        cycleState = 'stopped';
-        if (cycleIconPlay) cycleIconPlay.classList.remove('hidden');
-        if (cycleIconPause) cycleIconPause.classList.add('hidden');
-        if (cycleIconRestart) cycleIconRestart.classList.add('hidden');
-    }}
-    
-    // Cycle control button handler
-    var cycleControl = document.getElementById(wireframeId + '-cycle-control');
-    if (cycleControl) {{
-        cycleControl.addEventListener('click', function() {{
-            if (cycleState === 'stopped' || cycleState === 'paused') {{
-                startAutoCycle();
-                cycleControl.setAttribute('data-flyout-text', 'Pause');
-            }} else {{
-                stopAutoCycle();
-                cycleControl.setAttribute('data-flyout-text', 'Play');
-            }}
-        }});
-    }}
-    
-    if (autoCycling && cycleSteps.length > 0) {{
-        setTimeout(function() {{
-            startAutoCycle();
-            if (cycleControl) {{
-                cycleControl.setAttribute('data-flyout-text', 'Pause');
-            }}
-        }}, 1000);
-    }}
-    
-    {cycle_script}
-}}
+initWireframeDemo('{container_id}', {config_json});
 </script>
-''')
-        
-        html_parts.append('</div>')
+"""
         
         # Create raw HTML node
-        html_content = '\n'.join(html_parts)
-        raw_node = nodes.raw('', html_content, format='html')
+        raw_node = nodes.raw('', html_output, format='html')
         return [raw_node]
+
 
 
 def setup(app):
@@ -1784,3 +1280,8 @@ def setup(app):
     app.add_directive('plugin-api-refs', PluginApiReferencesDirective)
     app.add_directive('plugin-availability', PluginAvailabilityDirective)
     app.add_directive('wireframe-demo', WireframeDemoDirective)
+    
+    # Add wireframe demo static files
+    app.add_css_file('wireframe-demo.css')
+    app.add_js_file('wireframe-controller.js')
+

@@ -1,0 +1,286 @@
+/* Wireframe Demo Styles */
+/* Shared styles for wireframe component used in index.html and RST docs */
+
+.wireframe-demo-container {
+    background: var(--wireframe-bg, #003B4D);
+    border: 2px solid var(--wireframe-border, rgba(255, 255, 255, 0.3));
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+    position: relative;
+    margin: 40px 0;
+}
+
+html[data-theme="light"] .wireframe-demo-container {
+    background: #ffffff;
+    border-color: rgba(0, 59, 77, 0.2);
+}
+
+.wireframe-cycle-control {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    width: 44px;
+    height: 44px;
+    background: rgba(0, 59, 77, 0.9);
+    border: 2px solid var(--wireframe-border, rgba(255, 255, 255, 0.3));
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    z-index: 100;
+}
+
+.wireframe-cycle-control:hover {
+    background: rgba(0, 125, 164, 0.9);
+    transform: scale(1.05);
+}
+
+.wireframe-cycle-control-icon {
+    width: 24px;
+    height: 24px;
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+    transition: opacity 0.2s ease;
+}
+
+.wireframe-cycle-control-icon.hidden {
+    opacity: 0;
+    position: absolute;
+}
+
+.wireframe-cycle-control::after {
+    content: attr(data-flyout-text);
+    position: absolute;
+    right: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    margin-right: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: white;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.wireframe-cycle-control:hover::after {
+    opacity: 1;
+}
+
+.wireframe-toolbar {
+    background: #003B4D;
+    padding: 0;
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    border-bottom: 2px solid var(--wireframe-border, rgba(255, 255, 255, 0.3));
+    height: 72px;
+}
+
+.wireframe-toolbar-icon {
+    width: 48px;
+    height: 100%;
+    background-color: transparent;
+    background-size: 24px 24px;
+    background-position: center;
+    background-repeat: no-repeat;
+    border: none;
+    border-radius: 0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 1;
+}
+
+.wireframe-toolbar-icon.disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.wireframe-toolbar-icon:not(.disabled):hover {
+    background-color: rgba(0, 125, 164, 0.3);
+}
+
+.wireframe-toolbar-icon.active {
+    background-color: var(--button-hover, #C75109);
+}
+
+.wireframe-toolbar-divider {
+    width: 12px;
+    height: 100%;
+    background: transparent;
+    position: relative;
+}
+
+.wireframe-toolbar-divider::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 20%;
+    bottom: 20%;
+    width: 1px;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateX(-50%);
+}
+
+.wireframe-toolbar-spacer {
+    flex: 1;
+}
+
+.wireframe-main {
+    display: flex;
+    height: 400px;
+}
+
+.wireframe-sidebar {
+    width: 0;
+    background: rgba(0, 97, 126, 0.4);
+    overflow: hidden;
+    transition: width 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    border-right: 2px solid var(--wireframe-border, rgba(255, 255, 255, 0.3));
+    height: 100%;
+}
+
+.wireframe-sidebar.visible {
+    width: 300px;
+}
+
+.wireframe-sidebar-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+}
+
+.wireframe-sidebar-content {
+    padding: 16px;
+    color: white;
+    font-size: 14px;
+    line-height: 1.6;
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.wireframe-sidebar-content h3 {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    margin-top: 0;
+}
+
+.wireframe-sidebar-content select,
+.wireframe-sidebar-content input {
+    width: 100%;
+    padding: 8px;
+    margin: 8px 0;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    color: white;
+    font-size: 14px;
+}
+
+.wireframe-sidebar-content select option {
+    background: #003B4D;
+    color: white;
+}
+
+.wireframe-sidebar-content label {
+    color: white;
+    font-weight: 500;
+    margin-bottom: 4px;
+    display: block;
+}
+
+.wireframe-sidebar-footer {
+    padding: 12px 16px;
+    background: rgba(0, 97, 126, 0.4);
+    border-top: 1px solid var(--wireframe-border, rgba(255, 255, 255, 0.3));
+    flex-shrink: 0;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.wireframe-viewer {
+    flex: 1;
+    background: rgba(0, 97, 126, 0.4);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+.viewer-content {
+    flex: 1;
+    position: relative;
+    background: rgba(0, 97, 126, 0.4);
+    opacity: 0.5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.data-menu-legend {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.legend-item {
+    display: flex;
+    flex-direction: row-reverse;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0, 59, 77, 0.95);
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    width: fit-content;
+    margin-bottom: 4px;
+}
+
+.legend-item:hover {
+    background: rgba(0, 75, 95, 0.95);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.legend-icon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    display: block;
+}
+
+.legend-text {
+    color: white;
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    max-width: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: all 0.3s ease;
+}
+
+.legend-item:hover .legend-text {
+    max-width: 200px;
+    opacity: 1;
+}
