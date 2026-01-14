@@ -931,3 +931,140 @@ html[data-theme="light"] .jupyter-cell-code {
     padding: 40px 20px;
     font-style: italic;
 }
+        /* Wireframe Section - now inside platform tabs */
+        .wireframe-section {
+            width: 100%;
+            max-width: 1000px;
+            margin: 0 auto;
+            margin-top: 40px;
+            padding: 0;
+        }
+        @media (max-width: 768px) {
+            .grid-container {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .description-section {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .logo {
+                max-width: 350px;
+            }
+
+            .full-width-button {
+                font-size: 20px;
+                padding: 15px 40px;
+            }
+
+            .grid-item {
+                padding: 25px;
+            }
+
+            .grid-item h3 {
+                font-size: 22px;
+            }
+
+            .wireframe-viewer {
+                display: none;
+            }
+
+            .wireframe-toolbar-icon.mouseover-button {
+                display: none;
+            }
+
+            .wireframe-toolbar-right {
+                display: none;
+            }
+
+            .platform-tabs-header {
+                flex-direction: column;
+            }
+
+            .platform-tab {
+                border-right: 1px solid var(--grid-border);
+                border-bottom: none;
+            }
+
+            .platform-tab:last-child {
+                border-bottom: 1px solid var(--grid-border);
+            }
+
+            /* Reduce padding in content-border-wrapper for mobile */
+            .content-border-wrapper {
+                margin: 40px auto;
+                padding: 20px;
+            }
+
+            .platform-tabs-section {
+                width: calc(100% + 40px);
+                margin: -30px -20px 0 -20px;
+                padding: 0 20px;
+            }
+
+            /* Stack global filter tabs vertically on mobile */
+            .global-filter-tabs {
+                display: flex;
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .global-filter-tab {
+                border-right: 1px solid var(--grid-border);
+                border-bottom: none;
+            }
+
+            .global-filter-tab:last-child {
+                border-bottom: 1px solid var(--grid-border);
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 20px 15px;
+            }
+
+            .logo {
+                max-width: 280px;
+            }
+
+            .full-width-button {
+                font-size: 18px;
+                padding: 12px 30px;
+            }
+
+            .grid-item h3 {
+                font-size: 20px;
+            }
+
+            /* Further reduce padding for very small screens */
+            .content-border-wrapper {
+                margin: 30px auto;
+                padding: 20px;
+            }
+
+            .platform-tabs-section {
+                width: calc(100% + 30px);
+                margin: -25px -15px 0 -15px;
+                padding: 0 15px;
+            }
+
+            /* Stack global filter tabs vertically on small mobile */
+            .global-filter-tabs {
+                display: flex;
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .global-filter-tab {
+                border-right: 1px solid var(--grid-border);
+                border-bottom: none;
+            }
+
+            .global-filter-tab:last-child {
+                border-bottom: 1px solid var(--grid-border);
+            }
+        }
+    </style>
