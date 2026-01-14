@@ -198,7 +198,7 @@
                 var learnMore = sidebarData.learnMore || [];
                 
                 // Handle single-content sidebars (no tabs)
-                if (tabs.length === 0 || !sidebarData.tabs) {
+                if (tabs.length === 0) {
                     var content = sidebarData.content || '';
                     var apiSnippet = sidebarData.apiSnippet || '';
                     var contentHtml = '<div class="wireframe-sidebar-content">' + apiSnippet + content + '</div>';
