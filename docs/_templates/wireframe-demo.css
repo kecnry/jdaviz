@@ -833,6 +833,85 @@ html[data-theme="light"] .jupyter-cell-code {
     white-space: pre-wrap;
 }
 
+/* Expansion Panels */
+.expansion-panels {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+/* Remove padding from sidebar content when showing expansion panels */
+.wireframe-sidebar-content:has(.expansion-panels) {
+    padding: 0;
+}
+
+.expansion-panel {
+    border-bottom: 1px solid var(--grid-border);
+}
+
+.expansion-panel:first-child {
+    border-top: 1px solid var(--grid-border);
+}
+
+.expansion-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    cursor: pointer;
+    background: var(--sidebar-bg);
+    transition: background-color 0.2s ease;
+}
+
+.expansion-panel:not(.disabled) .expansion-panel-header:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.expansion-panel.disabled .expansion-panel-header {
+    cursor: default;
+    background: var(--sidebar-bg);
+}
+
+.expansion-panel-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-color);
+}
+
+.expansion-panel-arrow {
+    font-size: 10px;
+    color: var(--text-color);
+    transition: transform 0.3s ease;
+}
+
+.expansion-panel.expanded .expansion-panel-arrow {
+    transform: rotate(180deg);
+}
+
+.expansion-panel-placeholder {
+    width: 100%;
+    height: 8px;
+    background: rgba(128, 128, 128, 0.3);
+    border-radius: 4px;
+}
+
+.expansion-panel-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+    background: var(--sidebar-bg);
+}
+
+.expansion-panel-content.expanded {
+    max-height: 1000px;
+    padding: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.expansion-panel.disabled .expansion-panel-content {
+    display: none;
+}
+
 /* Wireframe-specific media queries */
 @media (max-width: 768px) {
     .wireframe-viewer {

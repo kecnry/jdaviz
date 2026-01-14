@@ -255,7 +255,37 @@ function initializeWireframeController() {
         },
         'plugins': {
             tabs: null,
-            content: '{{ descriptions.plugins|capitalize }}.',
+            content: '<div class="expansion-panels">' +
+                '<div class="expansion-panel expanded" data-panel-index="0">' +
+                '<div class="expansion-panel-header">' +
+                '<span class="expansion-panel-title">Data Analysis Plugin</span>' +
+                '<span class="expansion-panel-arrow">▼</span>' +
+                '</div>' +
+                '<div class="expansion-panel-content expanded">' +
+                '{{ descriptions.plugins|capitalize }}.' +
+                '</div>' +
+                '</div>' +
+                '<div class="expansion-panel disabled" data-panel-index="1">' +
+                '<div class="expansion-panel-header">' +
+                '<div class="expansion-panel-placeholder"></div>' +
+                '</div>' +
+                '</div>' +
+                '<div class="expansion-panel disabled" data-panel-index="2">' +
+                '<div class="expansion-panel-header">' +
+                '<div class="expansion-panel-placeholder"></div>' +
+                '</div>' +
+                '</div>' +
+                '<div class="expansion-panel disabled" data-panel-index="3">' +
+                '<div class="expansion-panel-header">' +
+                '<div class="expansion-panel-placeholder"></div>' +
+                '</div>' +
+                '</div>' +
+                '<div class="expansion-panel disabled" data-panel-index="4">' +
+                '<div class="expansion-panel-header">' +
+                '<div class="expansion-panel-placeholder"></div>' +
+                '</div>' +
+                '</div>' +
+                '</div>',
             apiSnippet: '<div class="api-snippet-container"><pre class="api-snippet">plg = jd.plugins[\'<i>plugin_name</i>\']</pre><button class="api-learn-more" data-scroll-target="grid-userapi">Learn about API access</button></div>',
             learnMore: { text: 'Browse analysis plugins →', target: 'grid-plugins' },
             scrollId: 'grid-plugins'
@@ -570,6 +600,38 @@ function initializeWireframeController() {
                             }, 500);
                         }
                     });
+                });
+
+                // Add expansion panel click handlers
+                const expansionPanels = wireframeSidebar.querySelectorAll('.expansion-panel:not(.disabled)');
+                expansionPanels.forEach(function(panel) {
+                    const header = panel.querySelector('.expansion-panel-header');
+                    const content = panel.querySelector('.expansion-panel-content');
+
+                    if (header && content) {
+                        header.addEventListener('click', function() {
+                            stopAutoCycle();
+
+                            // Toggle expanded state
+                            const isExpanded = panel.classList.contains('expanded');
+
+                            if (isExpanded) {
+                                panel.classList.remove('expanded');
+                                content.classList.remove('expanded');
+                            } else {
+                                // Close all other panels (accordion behavior)
+                                expansionPanels.forEach(function(p) {
+                                    p.classList.remove('expanded');
+                                    const c = p.querySelector('.expansion-panel-content');
+                                    if (c) c.classList.remove('expanded');
+                                });
+
+                                // Open this panel
+                                panel.classList.add('expanded');
+                                content.classList.add('expanded');
+                            }
+                        });
+                    }
                 });
             }, 100);
         }
