@@ -3159,7 +3159,66 @@
 
         <!-- Wireframe Section -->
         <div class="wireframe-section">
-            <div id="wireframe-container-index" style="position: relative;"></div>
+            <!-- Wireframe Demo Base Template -->
+            <div class="wireframe-demo-container" id="wireframe-container-index">
+                <div class="wireframe-cycle-control" id="wireframe-cycle-control-index" data-flyout-text="Play" style="display: none;">
+                    <div class="wireframe-cycle-control-icon" id="wireframe-cycle-icon-play-index"></div>
+                    <div class="wireframe-cycle-control-icon hidden" id="wireframe-cycle-icon-pause-index"></div>
+                    <div class="wireframe-cycle-control-icon hidden" id="wireframe-cycle-icon-restart-index"></div>
+                </div>
+                
+                <div class="wireframe-toolbar" id="wireframe-toolbar-index">
+                    <!-- Toolbar icons will be populated by JavaScript -->
+                </div>
+                
+                <div class="wireframe-main">
+                    <div class="wireframe-sidebar" id="wireframe-sidebar-index">
+                        <div class="wireframe-sidebar-body">
+                            <div class="wireframe-sidebar-content" id="wireframe-sidebar-content-index">
+                                <!-- Sidebar content will be populated by JavaScript -->
+                            </div>
+                            <div class="wireframe-sidebar-footer" id="wireframe-sidebar-footer-index" style="display: none;">
+                                <small>Learn more in documentation</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="wireframe-viewer">
+                        <div class="viewer-content" id="wireframe-viewer-content-index">
+                            Viewer Area
+                            <div class="data-menu-legend" id="wireframe-legend-index">
+                                <!-- Legend items will be populated by JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <script>
+            // Initialize wireframe with index.html-specific configuration
+            (function() {
+                // Wait for wireframe controller to be loaded
+                if (typeof initWireframeDemo === 'undefined') {
+                    console.error('Wireframe controller not loaded');
+                    return;
+                }
+                
+                // Configuration for index.html wireframe
+                var config = {
+                    disabledTabs: [],
+                    legendEntries: ['1D Spectrum', 'Subset 1'],
+                    sidebarId: '',
+                    sidebarContent: 'Click toolbar icons to toggle different sidebars',
+                    viewerContent: 'Viewer Area',
+                    showFooter: false,
+                    autoCycle: true,
+                    cycleSteps: ['click:loaders', 'click:save', 'click:settings', 'click:info', 'click:plugins', 'click:subsets']
+                };
+                
+                // Initialize the wireframe
+                initWireframeDemo('wireframe-container-index', config);
+            })();
+            </script>
         </div><!-- Tab-specific Content -->
         <div class="platform-content-section">
             <!-- Desktop UI Content -->
