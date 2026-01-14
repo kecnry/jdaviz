@@ -1229,7 +1229,7 @@ class WireframeDemoDirective(SphinxDirective):
         # Build the HTML for the wireframe
         html_parts = []
         
-        # Add styles (reusing from index.html but scoped to this wireframe)
+        # Add styles (reusing from index.html but scoped to this wireframe) with proper legend styling
         html_parts.append(f'''
 <style>
 /* Wireframe Demo Styles - Scoped to #{wireframe_id} */
@@ -1246,6 +1246,62 @@ class WireframeDemoDirective(SphinxDirective):
 html[data-theme="light"] #{wireframe_id} .wireframe-demo-container {{
     background: #ffffff;
     border-color: rgba(0, 59, 77, 0.2);
+}}
+
+#{wireframe_id} .wireframe-cycle-control {{
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    width: 44px;
+    height: 44px;
+    background: rgba(0, 59, 77, 0.9);
+    border: 2px solid var(--wireframe-border, rgba(255, 255, 255, 0.3));
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    z-index: 100;
+}}
+
+#{wireframe_id} .wireframe-cycle-control:hover {{
+    background: rgba(0, 125, 164, 0.9);
+    transform: scale(1.05);
+}}
+
+#{wireframe_id} .wireframe-cycle-control-icon {{
+    width: 24px;
+    height: 24px;
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+    transition: opacity 0.2s ease;
+}}
+
+#{wireframe_id} .wireframe-cycle-control-icon.hidden {{
+    opacity: 0;
+    position: absolute;
+}}
+
+#{wireframe_id} .wireframe-cycle-control::after {{
+    content: attr(data-flyout-text);
+    position: absolute;
+    right: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    margin-right: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: white;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}}
+
+#{wireframe_id} .wireframe-cycle-control:hover::after {{
+    opacity: 1;
 }}
 
 #{wireframe_id} .wireframe-toolbar {{
@@ -1313,32 +1369,50 @@ html[data-theme="light"] #{wireframe_id} .wireframe-demo-container {{
 
 #{wireframe_id} .wireframe-main {{
     display: flex;
-    min-height: 400px;
+    height: 400px;
 }}
 
 #{wireframe_id} .wireframe-sidebar {{
-    width: 300px;
+    width: 0;
     background: rgba(0, 97, 126, 0.4);
+    overflow: hidden;
+    transition: width 0.3s ease;
+    display: flex;
+    flex-direction: column;
     border-right: 2px solid var(--wireframe-border, rgba(255, 255, 255, 0.3));
-    padding: 20px;
-    color: white;
-    display: none;
-    overflow-y: auto;
+    height: 100%;
 }}
 
 #{wireframe_id} .wireframe-sidebar.visible {{
-    display: block;
+    width: 300px;
 }}
 
-#{wireframe_id} .wireframe-sidebar h3 {{
+#{wireframe_id} .wireframe-sidebar-body {{
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+}}
+
+#{wireframe_id} .wireframe-sidebar-content {{
+    padding: 16px;
+    color: white;
+    font-size: 14px;
+    line-height: 1.6;
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+}}
+
+#{wireframe_id} .wireframe-sidebar-content h3 {{
     font-size: 18px;
     font-weight: 700;
     margin-bottom: 16px;
     margin-top: 0;
 }}
 
-#{wireframe_id} .wireframe-sidebar select,
-#{wireframe_id} .wireframe-sidebar input {{
+#{wireframe_id} .wireframe-sidebar-content select,
+#{wireframe_id} .wireframe-sidebar-content input {{
     width: 100%;
     padding: 8px;
     margin: 8px 0;
@@ -1349,57 +1423,90 @@ html[data-theme="light"] #{wireframe_id} .wireframe-demo-container {{
     font-size: 14px;
 }}
 
-#{wireframe_id} .wireframe-sidebar select option {{
+#{wireframe_id} .wireframe-sidebar-content select option {{
     background: #003B4D;
     color: white;
 }}
 
 #{wireframe_id} .wireframe-sidebar-footer {{
-    margin-top: 20px;
-    padding-top: 20px;
-    border-top: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 12px 16px;
+    background: rgba(0, 97, 126, 0.4);
+    border-top: 1px solid var(--wireframe-border, rgba(255, 255, 255, 0.3));
+    flex-shrink: 0;
 }}
 
 #{wireframe_id} .wireframe-viewer {{
     flex: 1;
-    background: rgba(0, 59, 77, 0.2);
-    padding: 20px;
+    background: rgba(0, 97, 126, 0.4);
+    display: flex;
+    flex-direction: column;
     position: relative;
-    color: white;
 }}
 
-#{wireframe_id} .viewer-legend {{
+#{wireframe_id} .viewer-content {{
+    flex: 1;
+    position: relative;
+    background: rgba(0, 97, 126, 0.4);
+    opacity: 0.5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 18px;
+    font-weight: 600;
+}}
+
+#{wireframe_id} .data-menu-legend {{
     position: absolute;
-    top: 20px;
-    right: 20px;
-    background: rgba(0, 59, 77, 0.8);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    border-radius: 6px;
-    padding: 12px;
-    min-width: 150px;
+    top: 8px;
+    right: 8px;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
 }}
 
 #{wireframe_id} .legend-item {{
     display: flex;
+    flex-direction: row-reverse;
     align-items: center;
     gap: 8px;
-    margin: 6px 0;
-    font-size: 13px;
+    background: rgba(0, 59, 77, 0.95);
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    width: fit-content;
+    margin-bottom: 4px;
+}}
+
+#{wireframe_id} .legend-item:hover {{
+    background: rgba(0, 75, 95, 0.95);
+    border-color: rgba(255, 255, 255, 0.4);
 }}
 
 #{wireframe_id} .legend-icon {{
     width: 20px;
     height: 20px;
-    border-radius: 3px;
-    background: #007DA4;
+    flex-shrink: 0;
+    display: block;
 }}
 
-#{wireframe_id} .legend-icon:nth-child(2) {{
-    background: #00B4E6;
+#{wireframe_id} .legend-text {{
+    color: white;
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    max-width: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: all 0.3s ease;
 }}
 
-#{wireframe_id} .legend-icon:nth-child(3) {{
-    background: #C75109;
+#{wireframe_id} .legend-item:hover .legend-text {{
+    max-width: 200px;
+    opacity: 1;
 }}
 </style>
 ''')
@@ -1427,7 +1534,7 @@ html[data-theme="light"] #{wireframe_id} .wireframe-demo-container {{
         toolbar_html += '</div>'
         
         # Build sidebar content
-        sidebar_html = '<div class="wireframe-sidebar" id="' + wireframe_id + '-sidebar">'
+        sidebar_html = '<div class="wireframe-sidebar" id="' + wireframe_id + '-sidebar"><div class="wireframe-sidebar-body"><div class="wireframe-sidebar-content">'
         if custom_sidebar_html:
             sidebar_html += custom_sidebar_html
         elif sidebar_content == 'plugins':
@@ -1442,29 +1549,45 @@ html[data-theme="light"] #{wireframe_id} .wireframe-demo-container {{
         else:
             sidebar_html += '<p>Click toolbar icons to view sidebar content</p>'
         
+        sidebar_html += '</div>'
+        
         if show_footer:
             sidebar_html += '<div class="wireframe-sidebar-footer"><small>Learn more in documentation</small></div>'
         
-        sidebar_html += '</div>'
+        sidebar_html += '</div></div>'
         
-        # Build viewer content with legend
-        viewer_html = '<div class="wireframe-viewer">'
-        if viewer_content:
-            viewer_html += viewer_content
-        else:
-            viewer_html += '<div style="text-align: center; padding-top: 100px;">Viewer Area</div>'
+        # Build viewer content with legend (matching index.html structure)
+        viewer_html = '<div class="wireframe-viewer"><div class="viewer-content">Viewer Area'
         
         if legend_entries:
-            viewer_html += '<div class="viewer-legend">'
+            viewer_html += '<div class="data-menu-legend">'
+            colors = ['#007DA4', '#00B4E6', '#C75109', '#4CAF50', '#FFC107']
             for i, entry in enumerate(legend_entries):
-                viewer_html += f'<div class="legend-item"><div class="legend-icon"></div><span>{entry}</span></div>'
+                color = colors[i % len(colors)]
+                viewer_html += f'''<div class="legend-item">
+                    <svg class="legend-icon" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="20" height="20" rx="3" fill="{color}"/>
+                    </svg>
+                    <span class="legend-text">{entry}</span>
+                </div>'''
             viewer_html += '</div>'
         
-        viewer_html += '</div>'
+        viewer_html += '</div></div>'
         
         # Combine everything
         html_parts.append(f'<div id="{wireframe_id}" class="wireframe-demo">')
         html_parts.append('<div class="wireframe-demo-container">')
+        
+        # Add cycle control button if auto-cycle is enabled
+        if auto_cycle:
+            html_parts.append(f'''
+<div class="wireframe-cycle-control" id="{wireframe_id}-cycle-control" data-flyout-text="Play">
+    <div class="wireframe-cycle-control-icon" id="{wireframe_id}-cycle-icon-play"></div>
+    <div class="wireframe-cycle-control-icon hidden" id="{wireframe_id}-cycle-icon-pause"></div>
+    <div class="wireframe-cycle-control-icon hidden" id="{wireframe_id}-cycle-icon-restart"></div>
+</div>
+''')
+        
         html_parts.append(toolbar_html)
         html_parts.append('<div class="wireframe-main">')
         html_parts.append(sidebar_html)
@@ -1472,7 +1595,7 @@ html[data-theme="light"] #{wireframe_id} .wireframe-demo-container {{
         html_parts.append('</div>')
         html_parts.append('</div>')
         
-        # Add JavaScript for interactivity
+        # Add JavaScript for interactivity with icon SVGs
         html_parts.append(f'''
 <script>
 (function() {{
@@ -1484,6 +1607,38 @@ html[data-theme="light"] #{wireframe_id} .wireframe-demo-container {{
     var autoCycling = {str(auto_cycle).lower()};
     var cycleIndex = 0;
     var sidebarOrder = ['plugins'];
+    var cycleInterval = null;
+    var cycleState = 'stopped';
+    
+    // Icon SVGs (from index.html)
+    var iconSvgs = {{
+        'play': "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><path fill=\"white\" d=\"M8,5.14V19.14L19,12.14L8,5.14Z\" /></svg>')",
+        'pause': "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><path fill=\"white\" d=\"M14,19H18V5H14M6,19H10V5H6V19Z\" /></svg>')",
+        'restart': "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><path fill=\"white\" d=\"M12,4C14.1,4 16.1,4.8 17.6,6.3C20.7,9.4 20.7,14.5 17.6,17.6C15.8,19.5 13.3,20.2 10.9,19.9L11.4,17.9C13.1,18.1 14.9,17.5 16.2,16.2C18.5,13.9 18.5,10.1 16.2,7.7C15.1,6.6 13.5,6 12,6V10.6L7,5.6L12,0.6V4M6.3,17.6C3.7,15 3.3,11 5.1,7.9L6.6,9.4C5.5,11.6 5.9,14.4 7.8,16.2C8.3,16.7 8.9,17.1 9.6,17.4L9,19.4C8,19 7.1,18.4 6.3,17.6Z\" /></svg>')",
+        'database-import': "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><path fill=\"white\" d=\"M19,19V5H5V19H19M19,3A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5C3,3.89 3.9,3 5,3H19M11,7H13V11H17V13H13V17H11V13H7V11H11V7Z\" /></svg>')",
+        'download': "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><path fill=\"white\" d=\"M15,9H5V5H15M12,19A3,3 0 0,1 9,16A3,3 0 0,1 12,13A3,3 0 0,1 15,16A3,3 0 0,1 12,19M17,3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V7L17,3Z\" /></svg>')",
+        'tune': "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><path fill=\"white\" d=\"M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.67 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z\" /></svg>')",
+        'information': "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><path fill=\"white\" d=\"M11,9H13V7H11M12,20C7.59,20 4,16.41 4,12C4,7.59 7.59,4 12,4C16.41,4 20,7.59 20,12C20,16.41 16.41,20 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M11,17H13V11H11V17Z\" /></svg>')",
+        'wrench': "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><path fill=\"white\" d=\"M8 13C6.14 13 4.59 14.28 4.14 16H2V18H4.14C4.59 19.72 6.14 21 8 21S11.41 19.72 11.86 18H22V16H11.86C11.41 14.28 9.86 13 8 13M8 19C6.9 19 6 18.1 6 17C6 15.9 6.9 15 8 15S10 15.9 10 17C10 18.1 9.1 19 8 19M19.86 6C19.41 4.28 17.86 3 16 3S12.59 4.28 12.14 6H2V8H12.14C12.59 9.72 14.14 11 16 11S19.41 9.72 19.86 8H22V6H19.86M16 9C14.9 9 14 8.1 14 7C14 5.9 14.9 5 16 5S18 5.9 18 7C18 8.1 17.1 9 16 9Z\" /></svg>')",
+        'selection': "url('data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\"><path fill=\"white\" d=\"M2 2H8V4H4V8H2V2M2 16H4V20H8V22H2V16M16 2H22V8H20V4H16V2M20 16H22V22H16V20H20V16Z\" /></svg>')"
+    }};
+    
+    // Apply SVG backgrounds to icons
+    icons.forEach(function(icon) {{
+        var iconName = icon.dataset.icon;
+        if (iconName && iconSvgs[iconName]) {{
+            icon.style.backgroundImage = iconSvgs[iconName];
+        }}
+    }});
+    
+    // Apply SVG backgrounds to cycle control icons
+    var cycleIconPlay = document.getElementById(wireframeId + '-cycle-icon-play');
+    var cycleIconPause = document.getElementById(wireframeId + '-cycle-icon-pause');
+    var cycleIconRestart = document.getElementById(wireframeId + '-cycle-icon-restart');
+    
+    if (cycleIconPlay) cycleIconPlay.style.backgroundImage = iconSvgs['play'];
+    if (cycleIconPause) cycleIconPause.style.backgroundImage = iconSvgs['pause'];
+    if (cycleIconRestart) cycleIconRestart.style.backgroundImage = iconSvgs['restart'];
     
     // Show initial sidebar
     {'sidebar.classList.add("visible"); currentSidebar = "' + sidebar_content + '";' if sidebar_content else ''}
@@ -1508,28 +1663,61 @@ html[data-theme="light"] #{wireframe_id} .wireframe-demo-container {{
     }});
     
     // Auto-cycle function
-    function autoCycle() {{
-        if (!autoCycling) return;
+    function startAutoCycle() {{
+        cycleState = 'playing';
+        if (cycleIconPlay) cycleIconPlay.classList.add('hidden');
+        if (cycleIconPause) cycleIconPause.classList.remove('hidden');
         
-        var targetIcon = container.querySelector('.wireframe-toolbar-icon[data-sidebar="' + sidebarOrder[cycleIndex] + '"]');
-        if (targetIcon) {{
-            targetIcon.click();
+        cycleInterval = setInterval(function() {{
+            var targetIcon = container.querySelector('.wireframe-toolbar-icon[data-sidebar="' + sidebarOrder[cycleIndex] + '"]');
+            if (targetIcon && !targetIcon.classList.contains('active')) {{
+                targetIcon.click();
+            }}
+            
+            // Cycle through dropdown if present
+            var dataSelect = document.getElementById(wireframeId + '-data-select');
+            if (dataSelect) {{
+                setTimeout(function() {{
+                    dataSelect.selectedIndex = (dataSelect.selectedIndex + 1) % dataSelect.options.length;
+                }}, 1500);
+            }}
+            
+            cycleIndex = (cycleIndex + 1) % sidebarOrder.length;
+        }}, 3000);
+    }}
+    
+    function stopAutoCycle() {{
+        if (cycleInterval) {{
+            clearInterval(cycleInterval);
+            cycleInterval = null;
         }}
-        
-        // Cycle through dropdown if present
-        var dataSelect = document.getElementById(wireframeId + '-data-select');
-        if (dataSelect) {{
-            setTimeout(function() {{
-                dataSelect.selectedIndex = (dataSelect.selectedIndex + 1) % dataSelect.options.length;
-            }}, 1500);
-        }}
-        
-        cycleIndex = (cycleIndex + 1) % sidebarOrder.length;
-        setTimeout(autoCycle, 3000);
+        cycleState = 'stopped';
+        if (cycleIconPlay) cycleIconPlay.classList.remove('hidden');
+        if (cycleIconPause) cycleIconPause.classList.add('hidden');
+        if (cycleIconRestart) cycleIconRestart.classList.add('hidden');
+    }}
+    
+    // Cycle control button handler
+    var cycleControl = document.getElementById(wireframeId + '-cycle-control');
+    if (cycleControl) {{
+        cycleControl.addEventListener('click', function() {{
+            if (cycleState === 'stopped' || cycleState === 'paused') {{
+                startAutoCycle();
+                cycleControl.setAttribute('data-flyout-text', 'Pause');
+            }} else {{
+                stopAutoCycle();
+                cycleControl.setAttribute('data-flyout-text', 'Play');
+            }}
+        }});
     }}
     
     if (autoCycling) {{
-        setTimeout(autoCycle, 1000);
+        setTimeout(function() {{
+            startAutoCycle();
+            if (cycleControl) {{
+                cycleControl.setAttribute('data-flyout-text', 'Pause');
+            }}
+        }}, 1000);
     }}
     
     {cycle_script}
