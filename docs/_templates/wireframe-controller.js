@@ -618,8 +618,11 @@ function initializeWireframeController(container) {
                 // Add click handlers to tabs
                 const tabs = wireframeSidebar.querySelectorAll('.wireframe-sidebar-tab');
                 tabs.forEach(function(tab) {
-                    tab.addEventListener('click', function() {
-                        stopAutoCycle();
+                    tab.addEventListener('click', function(e) {
+                        // Only stop auto-cycle for real user clicks, not programmatic demo clicks
+                        if (e.isTrusted) {
+                            stopAutoCycle();
+                        }
                         const tabIndex = parseInt(tab.dataset.tabIndex);
 
                         // Update active state
@@ -878,8 +881,11 @@ function initializeWireframeController(container) {
             icon.classList.add('disabled');
         }
 
-        icon.addEventListener('click', function() {
-            stopAutoCycle();
+        icon.addEventListener('click', function(e) {
+            // Only stop auto-cycle for real user clicks, not programmatic demo clicks
+            if (e.isTrusted) {
+                stopAutoCycle();
+            }
 
             // Handle API button separately
             if (icon.classList.contains('api-button')) {
@@ -967,7 +973,6 @@ function initializeWireframeController(container) {
 
     // Auto-cycle function
     function autoCycleSidebars() {
-        console.log('[Wireframe Debug] autoCycleSidebars called', {
         if (!autoCycling) return;
 
         // Handle custom demo sequence with actions
@@ -1017,7 +1022,7 @@ function initializeWireframeController(container) {
                     if (value && value.includes(':')) {
                         const parts = value.split(':');
                         const targetLabel = parts[0].trim().toLowerCase();
-                        const targetValue = parts.slice(1).join(':').trim(); // Handle values with colons
+                        const targetValue = parts.slice(1).join(':').trim().toLowerCase(); // Handle values with colons
 
                         const dropdowns = wireframeSidebar.querySelectorAll('select');
                         dropdowns.forEach(function(dropdown) {
@@ -1025,10 +1030,12 @@ function initializeWireframeController(container) {
                             if (label && label.textContent) {
                                 const labelText = label.textContent.trim().toLowerCase();
                                 if (labelText === targetLabel || labelText.includes(targetLabel)) {
-                                    // Find option by value
+                                    // Find option by value (case-insensitive)
                                     const options = dropdown.querySelectorAll('option');
                                     options.forEach(function(option, index) {
-                                        if (option.textContent === targetValue || option.value === targetValue) {
+                                        const optionText = option.textContent.trim().toLowerCase();
+                                        const optionValue = (option.value || '').trim().toLowerCase();
+                                        if (optionText === targetValue || optionValue === targetValue) {
                                             dropdown.selectedIndex = index;
                                             // Trigger visual feedback
                                             dropdown.style.background = 'rgba(199, 93, 44, 0.3)';
@@ -1271,7 +1278,8 @@ function initializeWireframeController(container) {
     // Stop cycling on any user interaction within THIS container
     container.addEventListener('click', function(e) {
         // Only stop if clicking on interactive elements within this container
-        if (e.target.closest('.wireframe-toolbar-icon, .wireframe-sidebar-tab, .wireframe-sidebar-link')) {
+        // AND if it's a real user click (not programmatic from the demo)
+        if (e.isTrusted && e.target.closest('.wireframe-toolbar-icon, .wireframe-sidebar-tab, .wireframe-sidebar-link')) {
             stopAutoCycle();
         }
     });
