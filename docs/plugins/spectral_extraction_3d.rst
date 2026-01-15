@@ -93,7 +93,7 @@ UI Access
 =========
 
 .. wireframe-demo::
-   :demo: plugins,plugins:open-panel
+   :demo: plugins,plugins@1000:open-panel
    :enable-only: plugins
    :plugin-name: 3D Spectral Extraction
    :plugin-panel-opened: false

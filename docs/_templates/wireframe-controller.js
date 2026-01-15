@@ -367,7 +367,7 @@ function initializeWireframeController() {
             ],
             apiSnippets: [
                 createApiSnippet('ldr = jd.loaders[\'<i>source</i>\']\nldr.load()'),
-                createApiSnippet('vc = jd.new_viewers[\'<i>viewer_type</i>\']\nvc.create()')
+                createApiSnippet('vc = jd.new_viewers[\'<i>viewer_type</i>\']\nvc()')
             ],
             learnMore: [
                 { text: 'Learn more about data import →', target: 'grid-loaders' },
@@ -932,6 +932,35 @@ function initializeWireframeController() {
                             tab.click();
                         }
                     });
+                } else if (action === 'select-dropdown') {
+                    // Select a dropdown value by label - format: label:value
+                    if (value && value.includes(':')) {
+                        const parts = value.split(':');
+                        const targetLabel = parts[0].trim().toLowerCase();
+                        const targetValue = parts.slice(1).join(':').trim(); // Handle values with colons
+
+                        const dropdowns = wireframeSidebar.querySelectorAll('select');
+                        dropdowns.forEach(function(dropdown) {
+                            const label = dropdown.previousElementSibling;
+                            if (label && label.textContent) {
+                                const labelText = label.textContent.trim().toLowerCase();
+                                if (labelText === targetLabel || labelText.includes(targetLabel)) {
+                                    // Find option by value
+                                    const options = dropdown.querySelectorAll('option');
+                                    options.forEach(function(option, index) {
+                                        if (option.textContent === targetValue || option.value === targetValue) {
+                                            dropdown.selectedIndex = index;
+                                            // Trigger visual feedback
+                                            dropdown.style.background = 'rgba(199, 93, 44, 0.3)';
+                                            setTimeout(function() {
+                                                dropdown.style.background = '';
+                                            }, 800);
+                                        }
+                                    });
+                                }
+                            }
+                        });
+                    }
                 } else if (action === 'select-data' || action === 'select-aperture') {
                     // Select a dropdown value
                     const dropdowns = wireframeSidebar.querySelectorAll('select');
@@ -956,6 +985,12 @@ function initializeWireframeController() {
                             }
                         }
                     });
+                } else if (action === 'open-data-menu') {
+                    // Open the data menu popup - scoped to this wireframe
+                    const dataMenuTrigger = container.querySelector('.data-menu-trigger');
+                    if (dataMenuTrigger) {
+                        dataMenuTrigger.click();
+                    }
                 }
 
                 // Move to next step
