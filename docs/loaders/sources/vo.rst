@@ -33,7 +33,7 @@ API Access
     jd.show()
 
     # Using loaders API
-    ldr = jd.loaders['vo']
+    ldr = jd.loaders['virtual observatory']
     ldr.show()
 
     ldr.source = 'M4'
@@ -45,7 +45,7 @@ Since there are many options and the exposed options depend on previous selectio
 and interactively do a search in the UI and reproduce in a notebook cell:
 
 .. wireframe-demo::
-   :initial: loaders,loaders:select-tab=Data,loaders:select-dropdown=Source:vo
+   :initial: loaders,loaders:select-tab=Data,loaders:select-dropdown=Source:virtual observatory
    :demo: loaders:api-toggle
    :enable-only: loaders
    :demo-repeat: true

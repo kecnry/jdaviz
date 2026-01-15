@@ -2,7 +2,7 @@
 
 *****
 Image
-******
+*****
 
 Documentation coming soon.
 

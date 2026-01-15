@@ -8,7 +8,7 @@ function initializeWireframeController(container) {
         });
         return;
     }
-    
+
     // Skip if already initialized
     if (container.dataset.initialized) {
         return;
@@ -30,7 +30,7 @@ function initializeWireframeController(container) {
     } else {
         config = window.wireframeConfig || {};
     }
-    
+
     const initialState = config.initialState || null;
     const customDemo = config.customDemo || null;
     const enableOnly = config.enableOnly || null;
@@ -49,12 +49,12 @@ function initializeWireframeController(container) {
             console.error('Failed to parse customContentMap:', e);
         }
     }
-    
+
     // Helper function to parse sequence (initial or demo)
     function parseSequence(sequenceArray) {
         const sequence = [];
         if (!sequenceArray) return sequence;
-        
+
         sequenceArray.forEach(function(item) {
             let delay = 2000; // Default delay
             let workingItem = item;
@@ -188,8 +188,8 @@ function initializeWireframeController(container) {
     }
 
     function updateCycleControlButton() {
-        const cycleIconPause = document.getElementById('cycle-icon-pause');
-        const cycleIconRestart = document.getElementById('cycle-icon-restart');
+        const cycleIconPause = container.querySelector('.cycle-icon-pause');
+        const cycleIconRestart = container.querySelector('.cycle-icon-restart');
 
         if (autoCycling) {
             // Show PAUSE icon when cycling (action that will be taken)
@@ -249,7 +249,7 @@ function initializeWireframeController(container) {
         // Apply initial state if provided
         if (initialSequence && initialSequence.length > 0) {
             applyInitialState();
-            // After initial state completes, start demo
+            // After initial state completes, start demo immediately (manual restart)
             setTimeout(function() {
                 autoCycling = true;
                 currentCycleIndex = 0;
@@ -258,7 +258,7 @@ function initializeWireframeController(container) {
                 autoCycleSidebars();
             }, 1000);
         } else {
-            // No initial state, just start demo
+            // No initial state, start demo immediately (manual restart)
             autoCycling = true;
             currentCycleIndex = 0;
             hasStartedCycling = true;
@@ -266,21 +266,21 @@ function initializeWireframeController(container) {
             autoCycleSidebars();
         }
     }
-    
+
     // Apply initial state sequence
     function applyInitialState() {
         if (!initialSequence || initialSequence.length === 0) return;
-        
+
         let currentStep = 0;
-        
+
         function applyStep() {
             if (currentStep >= initialSequence.length) return;
-            
+
             const step = initialSequence[currentStep];
             const sidebarType = step.sidebar;
             const action = step.action;
             const value = step.value;
-            
+
             // Activate the sidebar
             if (action === 'show' || action === 'select-tab') {
                 if (action === 'select-tab' && value) {
@@ -300,23 +300,14 @@ function initializeWireframeController(container) {
                     activateSidebar(sidebarType);
                 }
             }
-            
+
             currentStep++;
             if (currentStep < initialSequence.length) {
                 setTimeout(applyStep, step.delay || 500);
             }
         }
-        
+
         applyStep();
-    }
-        currentCycleIndex = 0;
-        hasStartedCycling = true;
-
-        // Update button
-        updateCycleControlButton();
-
-        // Start cycling
-        autoCycleSidebars();
     }
 
     // Extract dropdown options from grid items
@@ -327,7 +318,7 @@ function initializeWireframeController(container) {
             viewerTypes: []
         };
 
-        // Find the loaders grid item (has two-column layout with Sources and Formats)
+        // Find the loaders grid item on the page (has two-column layout with Sources and Formats)
         const loadersGrid = document.querySelector('[data-grid-id="grid-loaders"]');
         if (loadersGrid) {
             const columnContents = loadersGrid.querySelectorAll('.column-content');
@@ -348,7 +339,7 @@ function initializeWireframeController(container) {
             }
         }
 
-        // Find viewers grid item
+        // Find viewers grid item on the page
         const viewersGrid = document.querySelector('[data-grid-id="grid-viewers"]');
         if (viewersGrid) {
             const links = viewersGrid.querySelectorAll('.grid-item-link');
@@ -364,8 +355,8 @@ function initializeWireframeController(container) {
     const dropdownOptions = extractDropdownOptions();
 
     // Handle description toggle
-    const descToggle = document.getElementById('description-toggle');
-    const descMore = document.getElementById('description-more');
+    const descToggle = container.querySelector('#description-toggle');
+    const descMore = container.querySelector('#description-more');
 
     if (descToggle && descMore) {
         descToggle.addEventListener('click', function() {
@@ -404,14 +395,14 @@ function initializeWireframeController(container) {
     });
 
     // Apply SVG backgrounds to cycle control icons
-    const cycleIconPause = document.getElementById('cycle-icon-pause');
-    const cycleIconRestart = document.getElementById('cycle-icon-restart');
+    const cycleIconPause = container.querySelector('.cycle-icon-pause');
+    const cycleIconRestart = container.querySelector('.cycle-icon-restart');
 
     if (cycleIconPause) cycleIconPause.style.backgroundImage = iconSvgs['pause'];
     if (cycleIconRestart) cycleIconRestart.style.backgroundImage = iconSvgs['restart'];
 
     // Handle search bar click - trigger Sphinx search
-    const wireframeSearchInput = document.getElementById('wireframe-search-input');
+    const wireframeSearchInput = container.querySelector('#wireframe-search-input');
     if (wireframeSearchInput) {
         wireframeSearchInput.addEventListener('click', function() {
             stopAutoCycle();
@@ -527,7 +518,7 @@ function initializeWireframeController(container) {
     let apiModeActive = false;
 
     // Show the API toggle button (it's hidden by default in HTML) and apply its icon
-    const apiButton = document.querySelector('.api-button');
+    const apiButton = container.querySelector('.api-button');
     if (apiButton) {
         apiButton.style.display = 'block';
         const iconName = apiButton.dataset.icon;
@@ -540,8 +531,8 @@ function initializeWireframeController(container) {
     function updateJupyterApiSnippet(data, tabIndex) {
         if (!apiModeActive) return;
 
-        const jupyterApiSnippet = document.getElementById('jupyter-api-snippet');
-        const jupyterApiContent = document.getElementById('jupyter-api-snippet-content');
+        const jupyterApiSnippet = container.querySelector('#jupyter-api-snippet');
+        const jupyterApiContent = container.querySelector('#jupyter-api-snippet-content');
 
         if (!jupyterApiSnippet || !jupyterApiContent) return;
 
@@ -572,7 +563,7 @@ function initializeWireframeController(container) {
     }
 
     function activateSidebar(sidebarType, tabIndex) {
-        const icon = document.querySelector('.wireframe-toolbar-icon[data-sidebar="' + sidebarType + '"]');
+        const icon = container.querySelector('.wireframe-toolbar-icon[data-sidebar="' + sidebarType + '"]');
 
         if (!icon) return;
 
@@ -636,7 +627,7 @@ function initializeWireframeController(container) {
                         tab.classList.add('active');
 
                         // Update content
-                        const contentDiv = document.getElementById('sidebar-tab-content');
+                        const contentDiv = container.querySelector('#sidebar-tab-content');
                         if (contentDiv && data.content[tabIndex]) {
                             const apiSnippet = data.apiSnippets && data.apiSnippets[tabIndex] ? data.apiSnippets[tabIndex] : '';
                             contentDiv.innerHTML = apiSnippet + data.content[tabIndex];
@@ -652,35 +643,41 @@ function initializeWireframeController(container) {
                             // Repopulate dropdowns for loaders sidebar
                             if (sidebarType === 'loaders') {
                                 setTimeout(function() {
-                                    const sourceSelect = document.getElementById('source-select');
-                                    const formatSelect = document.getElementById('format-select');
-                                    const viewerTypeSelect = document.getElementById('viewer-type-select');
+                                    const sourceSelect = container.querySelector('#source-select');
+                                    const formatSelect = container.querySelector('#format-select');
+                                    const viewerTypeSelect = container.querySelector('#viewer-type-select');
 
-                                    // Populate source dropdown
-                                    if (sourceSelect && dropdownOptions.sources.length > 0) {
-                                        sourceSelect.innerHTML = dropdownOptions.sources.map(function(source) {
-                                            return '<option>' + source + '</option>';
-                                        }).join('');
-                                    } else if (sourceSelect) {
-                                        sourceSelect.innerHTML = '<option>File</option><option>File Drop</option><option>URL</option>';
+                                    // Populate source dropdown (only if empty - not populated from registry)
+                                    if (sourceSelect && sourceSelect.options.length === 0) {
+                                        if (dropdownOptions.sources.length > 0) {
+                                            sourceSelect.innerHTML = dropdownOptions.sources.map(function(source) {
+                                                return '<option>' + source + '</option>';
+                                            }).join('');
+                                        } else {
+                                            sourceSelect.innerHTML = '<option>file</option><option>file drop</option><option>url</option><option>object</option><option>astroquery</option><option>virtual observatory</option>';
+                                        }
                                     }
 
-                                    // Populate format dropdown
-                                    if (formatSelect && dropdownOptions.formats.length > 0) {
-                                        formatSelect.innerHTML = dropdownOptions.formats.map(function(format) {
-                                            return '<option>' + format + '</option>';
-                                        }).join('');
-                                    } else if (formatSelect) {
-                                        formatSelect.innerHTML = '<option>1D Spectrum</option><option>2D Spectrum</option>';
+                                    // Populate format dropdown (only if empty - not populated from registry)
+                                    if (formatSelect && formatSelect.options.length === 0) {
+                                        if (dropdownOptions.formats.length > 0) {
+                                            formatSelect.innerHTML = dropdownOptions.formats.map(function(format) {
+                                                return '<option>' + format + '</option>';
+                                            }).join('');
+                                        } else {
+                                            formatSelect.innerHTML = '<option>1D Spectrum</option><option>2D Spectrum</option>';
+                                        }
                                     }
 
-                                    // Populate viewer type dropdown
-                                    if (viewerTypeSelect && dropdownOptions.viewerTypes.length > 0) {
-                                        viewerTypeSelect.innerHTML = dropdownOptions.viewerTypes.map(function(type) {
-                                            return '<option>' + type + '</option>';
-                                        }).join('');
-                                    } else if (viewerTypeSelect) {
-                                        viewerTypeSelect.innerHTML = '<option>1D Spectrum</option><option>2D Spectrum</option><option>Histogram</option><option>Scatter</option>';
+                                    // Populate viewer type dropdown (only if empty - not populated from registry)
+                                    if (viewerTypeSelect && viewerTypeSelect.options.length === 0) {
+                                        if (dropdownOptions.viewerTypes.length > 0) {
+                                            viewerTypeSelect.innerHTML = dropdownOptions.viewerTypes.map(function(type) {
+                                                return '<option>' + type + '</option>';
+                                            }).join('');
+                                        } else {
+                                            viewerTypeSelect.innerHTML = '<option>1D Spectrum</option><option>2D Spectrum</option><option>Histogram</option><option>Scatter</option>';
+                                        }
                                     }
                                 }, 50);
                             }
@@ -755,9 +752,9 @@ function initializeWireframeController(container) {
             // Populate dropdowns for loaders sidebar
             if (sidebarType === 'loaders') {
                 setTimeout(function() {
-                    const sourceSelect = document.getElementById('source-select');
-                    const formatSelect = document.getElementById('format-select');
-                    const viewerTypeSelect = document.getElementById('viewer-type-select');
+                    const sourceSelect = container.querySelector('#source-select');
+                    const formatSelect = container.querySelector('#format-select');
+                    const viewerTypeSelect = container.querySelector('#viewer-type-select');
 
                     // Populate source dropdown
                     if (sourceSelect && dropdownOptions.sources.length > 0) {
@@ -766,7 +763,7 @@ function initializeWireframeController(container) {
                         }).join('');
                     } else if (sourceSelect) {
                         // Fallback options
-                        sourceSelect.innerHTML = '<option>File</option><option>File Drop</option><option>URL</option>';
+                        sourceSelect.innerHTML = '<option>file</option><option>file drop</option><option>url</option><option>object</option><option>astroquery</option><option>virtual observatory</option>';
                     }
 
                     // Populate format dropdown
@@ -887,13 +884,13 @@ function initializeWireframeController(container) {
             // Handle API button separately
             if (icon.classList.contains('api-button')) {
                 apiModeActive = !apiModeActive;
-                const jupyterApiSnippet = document.getElementById('jupyter-api-snippet');
-                const jupyterApiContent = document.getElementById('jupyter-api-snippet-content');
-                const dataMenuApiSnippets = document.querySelectorAll('.data-menu-api-snippet');
+                const jupyterApiSnippet = container.querySelector('#jupyter-api-snippet');
+                const jupyterApiContent = container.querySelector('#jupyter-api-snippet-content');
+                const dataMenuApiSnippets = container.querySelectorAll('.data-menu-api-snippet');
 
                 if (apiModeActive) {
                     icon.classList.add('active');
-                    document.body.classList.add('api-mode-active');
+                    container.classList.add('api-mode-active');
 
                     // Show API snippet in Jupyter cell and update content based on current sidebar
                     if (jupyterApiSnippet && jupyterApiContent) {
@@ -921,7 +918,7 @@ function initializeWireframeController(container) {
                     }
                 } else {
                     icon.classList.remove('active');
-                    document.body.classList.remove('api-mode-active');
+                    container.classList.remove('api-mode-active');
 
                     // Hide API snippet in Jupyter cell
                     if (jupyterApiSnippet) {
@@ -929,10 +926,7 @@ function initializeWireframeController(container) {
                     }
                 }
 
-                // Re-activate current sidebar to update API snippets
-                if (currentSidebar) {
-                    activateSidebar(currentSidebar);
-                }
+                // Don't re-activate sidebar - just let CSS show/hide API snippets
                 return;
             }
 
@@ -973,6 +967,7 @@ function initializeWireframeController(container) {
 
     // Auto-cycle function
     function autoCycleSidebars() {
+        console.log('[Wireframe Debug] autoCycleSidebars called', {
         if (!autoCycling) return;
 
         // Handle custom demo sequence with actions
@@ -1005,7 +1000,7 @@ function initializeWireframeController(container) {
                     }
                 } else if (action === 'api-toggle') {
                     // Toggle API mode
-                    const apiButton = document.querySelector('.api-button');
+                    const apiButton = container.querySelector('.api-button');
                     if (apiButton) {
                         apiButton.click();
                     }
@@ -1128,7 +1123,7 @@ function initializeWireframeController(container) {
 
                 if (animationStep === 1) {
                     // Step 1: Change format select to "2D Spectrum"
-                    const formatSelect = document.getElementById('format-select');
+                    const formatSelect = container.querySelector('#format-select');
                     if (formatSelect) {
                         // Find the option with "2D Spectrum" (case-insensitive)
                         const options = formatSelect.querySelectorAll('option');
@@ -1204,18 +1199,17 @@ function initializeWireframeController(container) {
     }
 
     // Start auto-cycling only when wireframe is in view
-    const wireframeSection = document.querySelector('.wireframe-section');
     let hasStartedCycling = false;
 
     function checkWireframeInView() {
-        if (!autoCycling || hasStartedCycling || !wireframeSection) {
+        if (!autoCycling || hasStartedCycling) {
             return;
         }
 
-        const rect = wireframeSection.getBoundingClientRect();
+        const rect = container.getBoundingClientRect();
         const windowHeight = window.innerHeight || document.documentElement.clientHeight;
 
-        // Check if entire wireframe is visible in viewport
+        // Check if entire wireframe is fully visible in viewport
         const isFullyVisible = (
             rect.top >= 0 &&
             rect.bottom <= windowHeight
@@ -1230,10 +1224,12 @@ function initializeWireframeController(container) {
     // Check on scroll and initial load
     window.addEventListener('scroll', checkWireframeInView);
     window.addEventListener('resize', checkWireframeInView);
-    setTimeout(checkWireframeInView, 1000);
+    setTimeout(function() {
+        checkWireframeInView();
+    }, 1000);
 
     // Handle cycle control button
-    const cycleControlButton = document.getElementById('wireframe-cycle-control');
+    const cycleControlButton = container.querySelector('.wireframe-cycle-control');
     if (cycleControlButton) {
         // Hover: only update flyout text, don't change icons
         cycleControlButton.addEventListener('mouseenter', function() {
@@ -1254,8 +1250,8 @@ function initializeWireframeController(container) {
                 // Pause/cancel the cycle
                 stopAutoCycle();
                 // Update hover state immediately - show restart since now paused
-                const cycleIconPause = document.getElementById('cycle-icon-pause');
-                const cycleIconRestart = document.getElementById('cycle-icon-restart');
+                const cycleIconPause = container.querySelector('.cycle-icon-pause');
+                const cycleIconRestart = container.querySelector('.cycle-icon-restart');
                 if (cycleIconPause) cycleIconPause.classList.add('hidden');
                 if (cycleIconRestart) cycleIconRestart.classList.remove('hidden');
                 cycleControlButton.setAttribute('data-flyout-text', 'restart demo');
@@ -1263,8 +1259,8 @@ function initializeWireframeController(container) {
                 // Restart the cycle
                 restartAutoCycle();
                 // Update hover state immediately - show pause since now playing
-                const cycleIconPause = document.getElementById('cycle-icon-pause');
-                const cycleIconRestart = document.getElementById('cycle-icon-restart');
+                const cycleIconPause = container.querySelector('.cycle-icon-pause');
+                const cycleIconRestart = container.querySelector('.cycle-icon-restart');
                 if (cycleIconRestart) cycleIconRestart.classList.add('hidden');
                 if (cycleIconPause) cycleIconPause.classList.remove('hidden');
                 cycleControlButton.setAttribute('data-flyout-text', 'pause demo');
@@ -1272,18 +1268,18 @@ function initializeWireframeController(container) {
         });
     }
 
-    // Stop cycling on any user interaction
-    document.addEventListener('click', function(e) {
-        // Only stop if clicking on interactive elements
+    // Stop cycling on any user interaction within THIS container
+    container.addEventListener('click', function(e) {
+        // Only stop if clicking on interactive elements within this container
         if (e.target.closest('.wireframe-toolbar-icon, .wireframe-sidebar-tab, .wireframe-sidebar-link')) {
             stopAutoCycle();
         }
     });
 
     // Data menu popup handler
-    const dataMenuTriggers = document.querySelectorAll('.data-menu-trigger');
-    const dataMenuPopup = document.getElementById('data-menu-popup');
-    const dataMenuClose = document.getElementById('data-menu-close');
+    const dataMenuTriggers = container.querySelectorAll('.data-menu-trigger');
+    const dataMenuPopup = container.querySelector('#data-menu-popup');
+    const dataMenuClose = container.querySelector('#data-menu-close');
 
     if (dataMenuTriggers.length > 0 && dataMenuPopup && dataMenuClose) {
         dataMenuTriggers.forEach(function(trigger) {
@@ -1343,10 +1339,14 @@ function initializeWireframeController(container) {
 }
 
 // Initialize on DOMContentLoaded (for directive-embedded wireframes)
-document.addEventListener('DOMContentLoaded', initializeWireframeController);
+document.addEventListener('DOMContentLoaded', function() {
+    initializeWireframeController();
+});
 
 // Initialize on custom event (for dynamically loaded wireframes in index.html)
-document.addEventListener('wireframe-loaded', initializeWireframeController);
+document.addEventListener('wireframe-loaded', function() {
+    initializeWireframeController();
+});
 
 // Initialize grid item toggle buttons for landing page
 function initializeGridItemToggles() {

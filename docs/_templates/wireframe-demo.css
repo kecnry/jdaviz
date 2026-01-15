@@ -471,8 +471,8 @@ html[data-theme="light"] {
     display: none;
 }
 
-body.api-mode-active .data-menu-api-snippet {
-    display: block;
+.wireframe-container.api-mode-active .data-menu-api-snippet {
+    display: block !important;
 }
 
 .data-menu-api-snippet .api-snippet {
@@ -719,8 +719,8 @@ html[data-theme="light"] .api-learn-more {
 }
 
 /* Show API snippets when API mode is active */
-body.api-mode-active .api-snippet-container {
-    display: block;
+.wireframe-container.api-mode-active .api-snippet-container {
+    display: block !important;
 }
 
 /* Viewer Toolbar Icon Styles */
@@ -891,6 +891,7 @@ html[data-theme="light"] .wireframe-cycle-control::after {
     align-items: center;
     justify-content: space-between;
     padding: 12px 16px;
+    height: 48px;
     cursor: pointer;
     background: var(--sidebar-bg);
     transition: background-color 0.2s ease;

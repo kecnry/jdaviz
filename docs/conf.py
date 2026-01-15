@@ -1173,7 +1173,7 @@ WIREFRAME_CONTENT_REGISTRY = {
         'tab_content': {
             'Data': {
                 'form_elements': [
-                    {'type': 'select', 'label': 'Source', 'options': ['File', 'URL', 'File Drop']},
+                    {'type': 'select', 'label': 'Source', 'options': ['file', 'file drop', 'url', 'object', 'astroquery', 'virtual observatory']},
                     {'type': 'select', 'label': 'Format', 'options': ['1D Spectrum', '2D Spectrum', 'Image']},
                     {'type': 'button', 'label': 'Load'}
                 ]
@@ -1410,10 +1410,12 @@ def generate_form_html(form_elements):
     for element in form_elements:
         if element['type'] == 'select':
             options_html = ''.join(f"<option>{opt}</option>" for opt in element['options'])
+            # Generate ID from label (lowercase, replace spaces with hyphens)
+            select_id = element['label'].lower().replace(' ', '-') + '-select'
             html_parts.append(
                 f'<div class="wireframe-form-group">'
                 f'<label class="wireframe-form-label">{element["label"]}</label>'
-                f'<select class="wireframe-select">{options_html}</select>'
+                f'<select id="{select_id}" class="wireframe-select">{options_html}</select>'
                 f'</div>'
             )
         elif element['type'] == 'input':
@@ -1577,7 +1579,7 @@ class WireframeDemoDirective(SphinxDirective):
         plugin_name = self.options.get('plugin-name', None)
         plugin_panel_opened = self.options.get('plugin-panel-opened', 'true').lower() == 'true'
         custom_content = self.options.get('custom-content', None)
-        
+
         # Generate unique ID for this wireframe instance
         import time
         unique_id = f"wireframe-{int(time.time() * 1000000) % 1000000}"
@@ -1609,9 +1611,9 @@ class WireframeDemoDirective(SphinxDirective):
         # Build a proper JSON object
         import json
         import html as html_module
-        
+
         config_obj = {}
-        if initialState:
+        if initial_state:
             config_obj['initialState'] = [s.strip() for s in initial_state.split(',')]
         if demo_order:
             config_obj['customDemo'] = [s.strip() for s in demo_order.split(',')]
@@ -1624,11 +1626,11 @@ class WireframeDemoDirective(SphinxDirective):
         config_obj['pluginPanelOpened'] = plugin_panel_opened
         if custom_content_map:
             config_obj['customContentMap'] = json.dumps(custom_content_map)
-        
+
         # Convert to JSON and escape for HTML attribute
         config_json = json.dumps(config_obj)
         config_json_escaped = html_module.escape(config_json)
-        
+
         # Add unique ID to the wireframe container
         html_content = html_content.replace(
             '<div class="wireframe-container">',
