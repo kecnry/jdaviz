@@ -1,20 +1,37 @@
-// Wireframe controller initialization function
-function initializeWireframeController() {
-    // Skip if already initialized or elements don't exist
-    if (document.querySelector('.wireframe-container')?._wireframeInitialized) {
+// Wireframe controller initialization function - supports multiple instances
+function initializeWireframeController(container) {
+    // If no container provided, find all uninitialized containers
+    if (!container) {
+        const containers = document.querySelectorAll('.wireframe-container:not([data-initialized])');
+        containers.forEach(function(c) {
+            initializeWireframeController(c);
+        });
         return;
     }
-
-    const container = document.querySelector('.wireframe-container');
-    if (!container) {
+    
+    // Skip if already initialized
+    if (container.dataset.initialized) {
         return;
     }
 
     // Mark as initialized
-    container._wireframeInitialized = true;
+    container.dataset.initialized = 'true';
 
-    // Get configuration from window or use defaults
-    const config = window.wireframeConfig || {};
+    // Get configuration from container's data attribute or window fallback
+    let config = {};
+    const configAttr = container.dataset.wireframeConfig;
+    if (configAttr) {
+        try {
+            config = JSON.parse(configAttr);
+        } catch (e) {
+            console.error('Failed to parse wireframe config:', e);
+            config = window.wireframeConfig || {};
+        }
+    } else {
+        config = window.wireframeConfig || {};
+    }
+    
+    const initialState = config.initialState || null;
     const customDemo = config.customDemo || null;
     const enableOnly = config.enableOnly || null;
     const showScrollTo = config.showScrollTo !== undefined ? config.showScrollTo : true;
@@ -32,12 +49,13 @@ function initializeWireframeController() {
             console.error('Failed to parse customContentMap:', e);
         }
     }
-
-    // Parse demo sequence - can be simple list or actions with optional timing
-    // Format: sidebar@delay:action=value or sidebar:action=value or sidebar
-    let demoSequence = [];
-    if (customDemo) {
-        customDemo.forEach(function(item) {
+    
+    // Helper function to parse sequence (initial or demo)
+    function parseSequence(sequenceArray) {
+        const sequence = [];
+        if (!sequenceArray) return sequence;
+        
+        sequenceArray.forEach(function(item) {
             let delay = 2000; // Default delay
             let workingItem = item;
 
@@ -69,14 +87,14 @@ function initializeWireframeController() {
                     const equalsIndex = actionPart.indexOf('=');
                     const action = actionPart.substring(0, equalsIndex);
                     const value = actionPart.substring(equalsIndex + 1);
-                    demoSequence.push({
+                    sequence.push({
                         sidebar: sidebar,
                         action: action,
                         value: value,
                         delay: delay
                     });
                 } else {
-                    demoSequence.push({
+                    sequence.push({
                         sidebar: sidebar,
                         action: actionPart,
                         delay: delay
@@ -84,14 +102,20 @@ function initializeWireframeController() {
                 }
             } else {
                 // Simple sidebar activation
-                demoSequence.push({
+                sequence.push({
                     sidebar: workingItem,
                     action: 'show',
                     delay: delay
                 });
             }
         });
+        return sequence;
     }
+
+    // Parse demo sequence - can be simple list or actions with optional timing
+    // Format: sidebar@delay:action=value or sidebar:action=value or sidebar
+    let demoSequence = parseSequence(customDemo);
+    let initialSequence = parseSequence(initialState);
 
     const sidebarOrder = demoSequence.length > 0 ? demoSequence.map(s => s.sidebar) : ['loaders', 'save', 'settings', 'info', 'plugins', 'subsets'];
 
@@ -187,7 +211,7 @@ function initializeWireframeController() {
 
         // Reset API mode if active
         if (apiModeActive) {
-            const apiButton = document.querySelector('.api-button');
+            const apiButton = container.querySelector('.api-button');
             if (apiButton) {
                 apiButton.click();
             }
@@ -205,25 +229,86 @@ function initializeWireframeController() {
         }
 
         // Reset all form inputs
-        const inputs = document.querySelectorAll('.wireframe-input');
+        const inputs = container.querySelectorAll('.wireframe-input');
         inputs.forEach(function(input) {
             input.value = '';
         });
 
         // Reset all checkboxes
-        const checkboxes = document.querySelectorAll('.wireframe-checkbox');
+        const checkboxes = container.querySelectorAll('.wireframe-checkbox');
         checkboxes.forEach(function(checkbox) {
             checkbox.checked = false;
         });
 
         // Reset all dropdowns to first option
-        const selects = document.querySelectorAll('.wireframe-select');
+        const selects = container.querySelectorAll('.wireframe-select');
         selects.forEach(function(select) {
             select.selectedIndex = 0;
         });
 
-        // Reset state
-        autoCycling = true;
+        // Apply initial state if provided
+        if (initialSequence && initialSequence.length > 0) {
+            applyInitialState();
+            // After initial state completes, start demo
+            setTimeout(function() {
+                autoCycling = true;
+                currentCycleIndex = 0;
+                hasStartedCycling = true;
+                updateCycleControlButton();
+                autoCycleSidebars();
+            }, 1000);
+        } else {
+            // No initial state, just start demo
+            autoCycling = true;
+            currentCycleIndex = 0;
+            hasStartedCycling = true;
+            updateCycleControlButton();
+            autoCycleSidebars();
+        }
+    }
+    
+    // Apply initial state sequence
+    function applyInitialState() {
+        if (!initialSequence || initialSequence.length === 0) return;
+        
+        let currentStep = 0;
+        
+        function applyStep() {
+            if (currentStep >= initialSequence.length) return;
+            
+            const step = initialSequence[currentStep];
+            const sidebarType = step.sidebar;
+            const action = step.action;
+            const value = step.value;
+            
+            // Activate the sidebar
+            if (action === 'show' || action === 'select-tab') {
+                if (action === 'select-tab' && value) {
+                    // Find tab index by name
+                    const data = sidebarContent_map[sidebarType];
+                    if (data && data.tabs) {
+                        const tabIndex = data.tabs.findIndex(t => t === value);
+                        if (tabIndex !== -1) {
+                            activateSidebar(sidebarType, tabIndex);
+                        } else {
+                            activateSidebar(sidebarType);
+                        }
+                    } else {
+                        activateSidebar(sidebarType);
+                    }
+                } else {
+                    activateSidebar(sidebarType);
+                }
+            }
+            
+            currentStep++;
+            if (currentStep < initialSequence.length) {
+                setTimeout(applyStep, step.delay || 500);
+            }
+        }
+        
+        applyStep();
+    }
         currentCycleIndex = 0;
         hasStartedCycling = true;
 
@@ -290,9 +375,9 @@ function initializeWireframeController() {
         });
     }
 
-    // Handle wireframe toolbar interactions
-    const wireframeIcons = document.querySelectorAll('.wireframe-toolbar-icon, .api-button');
-    const wireframeSidebar = document.getElementById('wireframe-sidebar');
+    // Handle wireframe toolbar interactions - scoped to container
+    const wireframeIcons = container.querySelectorAll('.wireframe-toolbar-icon, .api-button');
+    const wireframeSidebar = container.querySelector('.wireframe-sidebar');
 
     // SVG icon data (embedded directly as background-image) - matching grid item icons
     const iconSvgs = {

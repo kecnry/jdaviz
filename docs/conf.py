@@ -1481,6 +1481,7 @@ class WireframeDemoDirective(SphinxDirective):
 
     Usage:
         .. wireframe-demo::
+           :initial: loaders,loaders:select-tab=Data
            :demo: plugins
            :enable-only: plugins
            :plugin-name: Aperture Photometry
@@ -1488,6 +1489,8 @@ class WireframeDemoDirective(SphinxDirective):
            :custom-content: plugins=<html content>
 
     Options:
+        initial: Initial state applied before demo starts, when repeating, or on restart.
+                 Uses same syntax as demo. Applied quickly without delays.
         demo: Custom demo sidebar order (comma-separated list) or demo sequence.
               Default: 'loaders,save,settings,info,plugins,subsets'
               Can also specify actions like: 'plugins:open-panel,plugins:select-data=Image 2'
@@ -1507,6 +1510,7 @@ class WireframeDemoDirective(SphinxDirective):
     """
 
     option_spec = {
+        'initial': str,
         'demo': str,
         'enable-only': str,
         'show-scroll-to': str,
@@ -1565,6 +1569,7 @@ class WireframeDemoDirective(SphinxDirective):
             js_content = js_content.replace(f'{{{{ descriptions.{key} }}}}', escaped_value)
 
         # Process directive options
+        initial_state = self.options.get('initial', None)
         demo_order = self.options.get('demo', None)
         enable_only = self.options.get('enable-only', None)
         show_scroll_to = self.options.get('show-scroll-to', 'false').lower() == 'true'
@@ -1572,9 +1577,20 @@ class WireframeDemoDirective(SphinxDirective):
         plugin_name = self.options.get('plugin-name', None)
         plugin_panel_opened = self.options.get('plugin-panel-opened', 'true').lower() == 'true'
         custom_content = self.options.get('custom-content', None)
+        
+        # Generate unique ID for this wireframe instance
+        import time
+        unique_id = f"wireframe-{int(time.time() * 1000000) % 1000000}"
 
         # Build configuration object for JavaScript
         config_parts = []
+        config_parts.append(f"id: '{unique_id}'")
+        
+        if initial_state:
+            # Parse initial state sequence - same format as demo
+            initial_list = [f"'{s.strip()}'" for s in initial_state.split(',')]
+            config_parts.append(f"initialState: [{', '.join(initial_list)}]")
+        
         if demo_order:
             # Parse demo sequence - can be simple list or actions
             demo_list = [f"'{s.strip()}'" for s in demo_order.split(',')]
@@ -1587,13 +1603,6 @@ class WireframeDemoDirective(SphinxDirective):
 
         config_parts.append(f"showScrollTo: {str(show_scroll_to).lower()}")
         config_parts.append(f"demoRepeat: {str(demo_repeat).lower()}")
-
-        if enable_only:
-            # Convert comma-separated string to JavaScript array
-            enable_list = [f"'{s.strip()}'" for s in enable_only.split(',')]
-            config_parts.append(f"enableOnly: [{', '.join(enable_list)}]")
-
-        config_parts.append(f"showScrollTo: {str(show_scroll_to).lower()}")
 
         if plugin_name:
             # Escape quotes in plugin name
@@ -1632,9 +1641,15 @@ class WireframeDemoDirective(SphinxDirective):
             escaped_json = content_json.replace('\\', '\\\\').replace("'", "\\'")
             config_parts.append(f"customContentMap: '{escaped_json}'")
 
-        # Inject configuration into the JavaScript
-        config_js = f"window.wireframeConfig = {{ {', '.join(config_parts)} }};\n"
-        js_content = config_js + js_content
+        # Inject configuration into the JavaScript as instance-specific
+        # Instead of global window.wireframeConfig, we'll use data attributes on the container
+        config_json = '{' + ', '.join(config_parts) + '}'
+        
+        # Add unique ID to the wireframe container
+        html_content = html_content.replace(
+            '<div class="wireframe-container">',
+            f'<div class="wireframe-container" id="{unique_id}" data-wireframe-config=\'{config_json}\'>'
+        )
 
         # Construct the complete HTML with embedded CSS and JS
         complete_html = f'''
