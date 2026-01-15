@@ -1582,35 +1582,6 @@ class WireframeDemoDirective(SphinxDirective):
         import time
         unique_id = f"wireframe-{int(time.time() * 1000000) % 1000000}"
 
-        # Build configuration object for JavaScript
-        config_parts = []
-        config_parts.append(f"id: '{unique_id}'")
-        
-        if initial_state:
-            # Parse initial state sequence - same format as demo
-            initial_list = [f"'{s.strip()}'" for s in initial_state.split(',')]
-            config_parts.append(f"initialState: [{', '.join(initial_list)}]")
-        
-        if demo_order:
-            # Parse demo sequence - can be simple list or actions
-            demo_list = [f"'{s.strip()}'" for s in demo_order.split(',')]
-            config_parts.append(f"customDemo: [{', '.join(demo_list)}]")
-
-        if enable_only:
-            # Convert comma-separated string to JavaScript array
-            enable_list = [f"'{s.strip()}'" for s in enable_only.split(',')]
-            config_parts.append(f"enableOnly: [{', '.join(enable_list)}]")
-
-        config_parts.append(f"showScrollTo: {str(show_scroll_to).lower()}")
-        config_parts.append(f"demoRepeat: {str(demo_repeat).lower()}")
-
-        if plugin_name:
-            # Escape quotes in plugin name
-            escaped_name = plugin_name.replace("'", "\\'").replace('"', '\\"')
-            config_parts.append(f"pluginName: '{escaped_name}'")
-
-        config_parts.append(f"pluginPanelOpened: {str(plugin_panel_opened).lower()}")
-
         # Build custom content map - first from explicit custom-content option
         custom_content_map = {}
         if custom_content:
@@ -1633,22 +1604,35 @@ class WireframeDemoDirective(SphinxDirective):
             if generated:
                 custom_content_map['plugins'] = generated
 
-        # Convert custom_content_map to JSON string for JavaScript
-        if custom_content_map:
-            import json
-            # Serialize to JSON, escaping for JavaScript string
-            content_json = json.dumps(custom_content_map)
-            escaped_json = content_json.replace('\\', '\\\\').replace("'", "\\'")
-            config_parts.append(f"customContentMap: '{escaped_json}'")
-
         # Inject configuration into the JavaScript as instance-specific
         # Instead of global window.wireframeConfig, we'll use data attributes on the container
-        config_json = '{' + ', '.join(config_parts) + '}'
+        # Build a proper JSON object
+        import json
+        import html as html_module
+        
+        config_obj = {}
+        if initialState:
+            config_obj['initialState'] = [s.strip() for s in initial_state.split(',')]
+        if demo_order:
+            config_obj['customDemo'] = [s.strip() for s in demo_order.split(',')]
+        if enable_only:
+            config_obj['enableOnly'] = [s.strip() for s in enable_only.split(',')]
+        config_obj['showScrollTo'] = show_scroll_to
+        config_obj['demoRepeat'] = demo_repeat
+        if plugin_name:
+            config_obj['pluginName'] = plugin_name
+        config_obj['pluginPanelOpened'] = plugin_panel_opened
+        if custom_content_map:
+            config_obj['customContentMap'] = json.dumps(custom_content_map)
+        
+        # Convert to JSON and escape for HTML attribute
+        config_json = json.dumps(config_obj)
+        config_json_escaped = html_module.escape(config_json)
         
         # Add unique ID to the wireframe container
         html_content = html_content.replace(
             '<div class="wireframe-container">',
-            f'<div class="wireframe-container" id="{unique_id}" data-wireframe-config=\'{config_json}\'>'
+            f'<div class="wireframe-container" id="{unique_id}" data-wireframe-config="{config_json_escaped}">'
         )
 
         # Construct the complete HTML with embedded CSS and JS
