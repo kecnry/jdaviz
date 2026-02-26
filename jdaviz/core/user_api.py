@@ -224,7 +224,12 @@ class UserApiWrapper:
                 exp_obj.selected = value
                 return
             elif len(exp_obj.create_new.choices) > 0:
-                exp_obj.create_new.selected = exp_obj.create_new.choices[0]
+                # support viewer = 'my label' or viewer = 'viewer_type:my label'
+                if ':' in value:
+                    viewer_type, value = value.split(':', 1)
+                    exp_obj.create_new.selected = viewer_type
+                else:
+                    exp_obj.create_new.selected = exp_obj.create_new.choices[0]
                 exp_obj.new_label.value = value
                 return
 

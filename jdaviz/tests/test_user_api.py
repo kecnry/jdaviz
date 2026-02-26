@@ -175,6 +175,88 @@ def test_viewer_create_new(deconfigged_helper, spectrum1d):
     assert len(deconfigged_helper.viewers['1D Spectrum'].data_menu.layer.choices) == 2
     assert len(deconfigged_helper.viewers['user-defined-viewer'].data_menu.layer.choices) == 1
 
+    # Test viewer_type:label syntax - should create viewer with specified type and label
+    deconfigged_helper.load(spectrum1d, format='1D Spectrum', viewer='1D Spectrum:custom-label', data_label='data5')  # noqa
+    assert len(deconfigged_helper.app.data_collection) == 5
+    assert len(deconfigged_helper.viewers) == 3
+    assert 'custom-label' in deconfigged_helper.viewers
+    assert len(deconfigged_helper.viewers['custom-label'].data_menu.layer.choices) == 1
+
+    # Verify the viewer is of the correct type (1D Spectrum viewer)
+    assert deconfigged_helper.viewers['custom-label']._obj.reference == 'spectrum-1d-viewer'
+
+    # Test that plain label (without colon) uses first available viewer type from choices
+    deconfigged_helper.load(spectrum1d, format='1D Spectrum', viewer='another-viewer', data_label='data6')  # noqa
+    assert len(deconfigged_helper.app.data_collection) == 6
+    assert len(deconfigged_helper.viewers) == 4
+    assert 'another-viewer' in deconfigged_helper.viewers
+    # Should also be a 1D Spectrum viewer since that's the only/first choice
+    assert deconfigged_helper.viewers['another-viewer']._obj.reference == 'spectrum-1d-viewer'
+
+
+def test_viewer_colon_syntax_edge_cases(deconfigged_helper, spectrum1d, image_hdu_wcs):
+    """Test edge cases and error handling for viewer='type:label' syntax (lines 227-232 in user_api.py)."""
+    
+    # Test with valid viewer type but different data format requiring Image viewer
+    deconfigged_helper.load(image_hdu_wcs, format='Image', viewer='Image:my-image-viewer', data_label='img1')
+    assert 'my-image-viewer' in deconfigged_helper.viewers
+    # Verify data was loaded into the viewer
+    assert 'img1' in deconfigged_helper.viewers['my-image-viewer'].data_menu.data_labels_loaded
+    
+    # Test with invalid viewer type in colon syntax - should fail gracefully
+    # The viewer type must match one of the create_new.choices
+    ldr = deconfigged_helper.loaders['object']
+    ldr.object = spectrum1d
+    ldr.format = '1D Spectrum'
+    
+    # Attempt to set invalid viewer type in colon syntax
+    # SelectPluginComponent will ignore invalid selections
+    try:
+        ldr.importer.viewer = 'InvalidType:test-label'
+        # If it doesn't raise, check it wasn't set to the invalid type
+        assert ldr.importer.viewer.create_new.selected != 'InvalidType'
+    except (ValueError, KeyError):
+        # Also acceptable to raise an error
+        pass
+    
+    # Test colon in label name (second colon should be part of the label)
+    # Split only on the first colon via split(':', 1), so 'Type:label:with:colons' 
+    # becomes type='Type', label='label:with:colons'
+    deconfigged_helper.load(spectrum1d, format='1D Spectrum', 
+                           viewer='1D Spectrum:viewer:with:colons', data_label='data_colon')
+    assert 'viewer:with:colons' in deconfigged_helper.viewers
+    # Verify the data was loaded into the viewer
+    assert 'data_colon' in deconfigged_helper.viewers['viewer:with:colons'].data_menu.data_labels_loaded
+    
+    # Test setting viewer through importer API directly
+    ldr2 = deconfigged_helper.loaders['object']
+    ldr2.object = spectrum1d
+    ldr2.format = '1D Spectrum'
+    
+    # Direct API call with colon syntax - this tests lines 228-230 in user_api.py
+    ldr2.importer.viewer = '1D Spectrum:api-test-viewer'
+    assert ldr2.importer.viewer.create_new.selected == '1D Spectrum'
+    assert ldr2.importer.viewer.new_label.value == 'api-test-viewer'
+    ldr2.load()
+    assert 'api-test-viewer' in deconfigged_helper.viewers
+    # Verify data loaded
+    data_label = ldr2.importer.data_label.value
+    assert data_label in deconfigged_helper.viewers['api-test-viewer'].data_menu.data_labels_loaded
+    
+    # Test plain string (no colon) - this tests lines 231-232 in user_api.py
+    ldr3 = deconfigged_helper.loaders['object']
+    ldr3.object = spectrum1d
+    ldr3.format = '1D Spectrum'
+    ldr3.importer.viewer = 'plain-label-viewer'
+    # Should select first choice from create_new.choices
+    assert ldr3.importer.viewer.create_new.selected == ldr3.importer.viewer.create_new.choices[0]
+    assert ldr3.importer.viewer.new_label.value == 'plain-label-viewer'
+    ldr3.load()
+    assert 'plain-label-viewer' in deconfigged_helper.viewers
+    # Verify data loaded
+    data_label = ldr3.importer.data_label.value
+    assert data_label in deconfigged_helper.viewers['plain-label-viewer'].data_menu.data_labels_loaded
+    
 
 @pytest.mark.parametrize(
     ("selection", "matches"), [
