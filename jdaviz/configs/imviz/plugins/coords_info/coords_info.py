@@ -294,6 +294,12 @@ class CoordsInfo(TemplateMixin, DatasetSelectMixin):
 
     def update_display(self, viewer, x, y, mouseevent=True):
         self._dict = {}
+        # Check downstream-registered handlers first so they can override built-in viewer types
+        # (e.g. a downstream viewer that inherits CubevizImageView but needs custom coords logic)
+        for vcls, handler in self._viewer_update_handlers.items():
+            if isinstance(viewer, vcls):
+                handler(self, viewer, x, y, mouseevent=mouseevent)
+                return
         if isinstance(viewer, (Spectrum1DViewer, RampvizProfileView)):
             self._spectrum_viewer_update(viewer, x, y, mouseevent=mouseevent)
         elif isinstance(viewer,
@@ -303,11 +309,6 @@ class CoordsInfo(TemplateMixin, DatasetSelectMixin):
                          RampvizImageView)
                         ):
             self._image_viewer_update(viewer, x, y, mouseevent=mouseevent)
-        else:
-            # Dispatch to any handler registered by a downstream config
-            for vcls, handler in self._viewer_update_handlers.items():
-                if isinstance(viewer, vcls):
-                    handler(self, viewer, x, y, mouseevent=mouseevent)
                     return
 
     def _image_shape_inds(self, image):
