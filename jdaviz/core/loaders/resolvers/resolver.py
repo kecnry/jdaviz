@@ -181,6 +181,20 @@ class FormatSelect(SelectPluginComponent):
         catalog_formats = [f for f in all_formats if f['label'] == 'Catalog']
         other_formats = [f for f in all_formats if f['label'] != 'Catalog']
         self.items = other_formats + catalog_formats
+
+        if self._invalid_importers:
+            invalid_text = '\n'.join(
+                f'  {name}: {reason}'
+                for name, reason in self._invalid_importers.items()
+            )
+            self.plugin._app.hub.broadcast(
+                SnackbarMessage(
+                    f'FormatSelect: invalid parsers/importers for current input:\n{invalid_text}',
+                    sender=self.plugin,
+                    color='debug',
+                )
+            )
+
         self._apply_default_selection()
 
 
