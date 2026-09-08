@@ -55,18 +55,30 @@
           :items="widget.items"
           :placeholder="widget.label"
           :multiple="widget.multiselect"
-          :chips="widget.multiselect"
-          :small-chips="widget.multiselect"
-          deletable-chips
           density="compact"
-          solo
+          variant="solo"
           flat
           hide-details
-          style="min-width: 120px; max-width: 250px;"
+          :style="widget.multiselect ? 'min-width: 160px; max-width: 320px;' : 'min-width: 120px; max-width: 250px;'"
           class="custom-toolbar-select"
           item-title="label"
           item-value="value"
-        ></v-select>
+        >
+          <template v-slot:selection="{ item, index }">
+            <span v-if="!widget.multiselect" class="custom-toolbar-selection-text">{{ item.title }}</span>
+            <v-chip
+              v-else-if="index < max_chips(widget)"
+              size="x-small"
+              label
+              class="custom-toolbar-chip"
+            >{{ item.title }}</v-chip>
+            <span
+              v-else-if="index === max_chips(widget)"
+              class="custom-toolbar-overflow"
+              :title="(custom_widget_selected[idx] || []).join(', ')"
+            >+{{ (custom_widget_selected[idx] || []).length - max_chips(widget) }} more</span>
+          </template>
+        </v-select>
       </template>
     </span>
 
@@ -193,6 +205,10 @@
 
         return style;
       },
+      max_chips(widget) {
+        // number of chips shown inline before collapsing the rest into a "+N" counter
+        return widget.max_chips !== undefined ? widget.max_chips : 3;
+      },
       update_widget_selection(idx, val) {
         // Update the selection for a specific widget index
         let newSelected = [...this.custom_widget_selected];
@@ -255,28 +271,17 @@
   background-color: #007ba1 !important;
   border-radius: 4px !important;
 }
-.custom-toolbar-select.v-text-field.v-text-field--solo .v-input__slot {
+.custom-toolbar-select .v-field,
+.custom-toolbar-select .v-field__overlay {
   background-color: #007ba1 !important;
+  box-shadow: none !important;
+  border-radius: 4px !important;
+  opacity: 1 !important;
 }
-.custom-toolbar-select >>> .v-input__slot {
-  min-height: 32px !important;
-  padding: 0 8px !important;
-  background-color: #007ba1 !important;
-}
-.custom-toolbar-select >>> .v-text-field__slot {
-  background-color: #007ba1 !important;
-}
-.custom-toolbar-select >>> .v-select__slot {
-  background-color: #007ba1 !important;
-}
-.custom-toolbar-select >>> .v-input__control {
+.custom-toolbar-select .v-input__control {
   min-height: 32px !important;
 }
-.custom-toolbar-select >>> .v-select__selections {
-  min-height: 28px !important;
-  padding: 0 !important;
-}
-/* Vuetify 3: selected text and input field */
+/* selected text and input field */
 .custom-toolbar-select .v-select__selection-text,
 .custom-toolbar-select .v-field__input,
 .custom-toolbar-select .v-field__input input,
@@ -284,17 +289,55 @@
   color: white !important;
   font-size: 12px !important;
 }
-.custom-toolbar-select >>> .v-chip {
-  height: 22px !important;
-  margin: 2px !important;
+/* keep selections on a single line, collapsing overflow into the "+N" counter */
+.custom-toolbar-select .v-field__input {
+  flex-wrap: nowrap !important;
+  overflow: hidden !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  min-height: 32px !important;
+  row-gap: 0 !important;
 }
-.custom-toolbar-select >>> .v-chip .v-chip__content {
-  font-size: 11px;
+.custom-toolbar-select .v-field__input > input {
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
 }
-.custom-toolbar-select >>> .v-icon {
+.custom-toolbar-select .v-select__selection {
+  margin: 0 !important;
+  overflow: hidden !important;
+}
+.custom-toolbar-select .v-chip {
+  height: 20px !important;
+  margin: 0 2px 0 0 !important;
+  padding: 0 6px !important;
+  flex: none !important;
+  background-color: rgba(255, 255, 255, 0.2) !important;
   color: white !important;
 }
-.custom-toolbar-select >>> input::placeholder {
+.custom-toolbar-select .v-chip .v-chip__content {
+  font-size: 11px;
+  white-space: nowrap;
+  display: block;
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.custom-toolbar-overflow {
+  color: white !important;
+  font-size: 11px;
+  white-space: nowrap;
+  flex: none;
+  margin-left: 2px;
+}
+.custom-toolbar-selection-text {
+  color: white !important;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.custom-toolbar-select .v-icon {
+  color: white !important;
+}
+.custom-toolbar-select input::placeholder {
   color: rgba(255, 255, 255, 0.7) !important;
 }
 .custom-toolbar-slider .v-slider-track__background,
