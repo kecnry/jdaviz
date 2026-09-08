@@ -109,6 +109,7 @@ New Features
 
 - Generate a Gaussian curve from Line Analysis plugin results and optionally add to the 1D Spectrum viewer. [#4374]
 
+
 Mosviz
 ^^^^^^
 
