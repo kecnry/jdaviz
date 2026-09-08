@@ -175,6 +175,7 @@ custom_components = {'j-tooltip': 'components/tooltip.vue',
                      'j-child-layer-icon': 'components/child_layer_icon.vue',
                      'j-about-menu': 'components/about_menu.vue',
                      'j-custom-toolbar-toggle': 'components/custom_toolbar_toggle.vue',
+                     'j-cone-search-messages': 'components/cone_search_messages.vue',
                      'loader-import-button': 'components/loader_import_button.vue',
                      'plugin-previews-temp-disabled': 'components/plugin_previews_temp_disabled.vue',  # noqa
                      'plugin-table': 'components/plugin_table.vue',
@@ -363,6 +364,13 @@ class ApplicationState(State):
 
     dev_loaders = CallbackProperty(
         False, docstring='Whether to enable developer mode for new loaders infrastructure')
+
+    # PRs to add to changelog when removing dev_mos_loader dev-flag: 4375
+    dev_spectral_lines_plugin = CallbackProperty(
+        False, docstring='Whether to enable developer mode for the Spectral Lines plugin')
+    # PRs to add to changelog when removing dev_mos_loader dev-flag: 4357
+    dev_mos_loader = CallbackProperty(
+        False, docstring='Whether to enable developer mode for the MOS loader')
     loader_items = ListCallbackProperty(
         docstring="List of loaders available to the application.")
     loader_selected = CallbackProperty(
