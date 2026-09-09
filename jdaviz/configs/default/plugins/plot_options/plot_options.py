@@ -878,7 +878,7 @@ class PlotOptions(PluginTemplateMixin, ViewerSelectMixin):
             expose = [e for e in expose if e not in self._user_api_remove]
 
         return PluginUserApi(self, expose,
-                             deprecated={'table_columns_visible': TABLE_COLUMNS_VISIBLE_DEPRECATION})  # noqa
+                             deprecated={'table_columns_visible': "plot_options.table_columns_visible is deprecated, use the 'Visible columns' tool in the table viewer toolbar instead."})  # noqa
 
     @property
     def multiselect(self):
