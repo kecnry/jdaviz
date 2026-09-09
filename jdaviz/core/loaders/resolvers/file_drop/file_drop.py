@@ -84,6 +84,7 @@ class FileDropResolver(BaseResolver):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._file_info = None
+        self._file_infos = []
 
         self.file_drop_widget_el = FileDropMultiple(label="Drop file here",
                                                     on_total_progress=self._on_total_progress,
@@ -135,17 +136,25 @@ class FileDropResolver(BaseResolver):
 
     def _on_file_updated(self, file_infos):
         self.nfiles = len(file_infos)
-        self._file_info = file_infos[0]
+        self._file_infos = list(file_infos)
+        self._file_info = self._file_infos[0]
         self._resolver_input_updated()
         self.progress = 100
 
     @property
     def output(self):
-        result = self.parsed_input
-        if hasattr(result, 'seek'):
+        # one BytesIO per dropped file
+        results = [io.BytesIO(file_info.get('data')) for file_info in self._file_infos]
+        for result in results:
             result.seek(0)
-        return result
+        return results if len(results) != 1 else results[0]
 
     def parse_input(self):
         # this will return a bytes object of the file contents
         return io.BytesIO(self._file_info.get('data'))
+
+    def _default_label_for_output(self, output_index):
+        try:
+            return os.path.splitext(self._file_infos[output_index]['name'])[0]
+        except (IndexError, KeyError):
+            return super()._default_label_for_output(output_index)

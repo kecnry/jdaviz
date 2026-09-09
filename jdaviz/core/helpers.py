@@ -167,7 +167,10 @@ class ConfigHelper(HubListener):
 
         orig_debug = ldr.format.debug
         ldr.format.debug = True
-        parser = ldr.format._parsers[parser_name]
+        # _parsers is keyed by (parser_name, output_index); grab the first (primary) output
+        matches = sorted((idx, p) for (name, idx), p in ldr.format._parsers.items()
+                         if name == parser_name)
+        parser = matches[0][1]
         ldr.format.debug = orig_debug
         if importer_name is None:
             return parser

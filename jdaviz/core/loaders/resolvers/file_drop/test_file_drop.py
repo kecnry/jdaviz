@@ -158,6 +158,32 @@ class TestFileDropResolverParseInput:
         with pytest.raises(AttributeError):
             file_drop_resolver.parse_input()
 
+    def test_output_single_file(self, file_drop_resolver):
+        """
+        A single dropped file results in a scalar (non-list) output.
+        """
+        with patch.object(file_drop_resolver, '_resolver_input_updated'):
+            file_drop_resolver._on_file_updated([_FILE_INFO[0]])
+
+        assert isinstance(file_drop_resolver.output, io.BytesIO)
+        assert file_drop_resolver.output.read() == _FILE_INFO[0]['data']
+
+    def test_output_multiple_files(self, file_drop_resolver):
+        """
+        Multiple dropped files result in a list of BytesIO outputs, one per file.
+        """
+        with patch.object(file_drop_resolver, '_resolver_input_updated'):
+            file_drop_resolver._on_file_updated(_FILE_INFO)
+
+        output = file_drop_resolver.output
+        assert isinstance(output, list)
+        assert len(output) == len(_FILE_INFO)
+        for result, file_info in zip(output, _FILE_INFO):
+            assert isinstance(result, io.BytesIO)
+            assert result.read() == file_info['data']
+
+        assert file_drop_resolver._default_label_for_output(1) == 'file2'
+
 
 def _create_sample_csv_data():
     """

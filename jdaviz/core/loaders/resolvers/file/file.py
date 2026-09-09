@@ -88,6 +88,9 @@ class FileResolver(BaseResolver):
         return os.path.splitext(os.path.basename(self.filepath))[0] if self.filepath else None
 
     def parse_input(self):
+        # NOTE: if solara's FileBrowser ever supports selecting multiple files (e.g. cmd+click),
+        # returning a list/tuple of paths here would automatically be treated as multiple
+        # resolver outputs (see BaseResolver.output/_as_output_list) with no further changes.
         return self.filepath
 
 
