@@ -406,7 +406,7 @@ class BaseResolver(PluginTemplateMixin, CustomToolbarToggleMixin, FootprintDispl
         self.file_table.show_if_empty = False
         self.file_table.show_rowselect = True
         self.file_table.item_key = "location"
-        self.file_table.multiselect = False
+        self.file_table.multiselect = True
         self.file_table.server_pagination = True
         self.file_table._selected_rows_changed_callback = self.on_file_select_changed
 
@@ -1002,10 +1002,11 @@ class BaseResolver(PluginTemplateMixin, CustomToolbarToggleMixin, FootprintDispl
         # ensure the importer updates even if the format selection remains fixed
         self._on_format_selected_changed()
 
-    def get_selected_url(self):
-        if len(self.file_table.selected_rows) != 1:
-            return None
-        location = self.file_table.selected_rows[0]['location']
+    def get_selected_urls(self):
+        """Return URLs for every selected product-table row."""
+        return [self._location_to_url(row['location']) for row in self.file_table.selected_rows]
+
+    def _location_to_url(self, location):
 
         # Check if it's a local file path (absolute, relative, or home directory)
         # or if it starts with a recognized URL scheme
@@ -1023,13 +1024,15 @@ class BaseResolver(PluginTemplateMixin, CustomToolbarToggleMixin, FootprintDispl
 
     @with_spinner('spinner', 'downloading file...')
     def _download_from_file_table(self):
-        url = self.get_selected_url().strip()
-        if not url:
+        urls = self.get_selected_urls()
+        if not urls:
             return None
-        return download_uri_to_path(url,
-                                    cache=self.file_cache,
-                                    local_path=self.file_local_path,
-                                    timeout=self.file_timeout)
+        paths = [download_uri_to_path(url.strip(),
+                                      cache=self.file_cache,
+                                      local_path=self.file_local_path,
+                                      timeout=self.file_timeout)
+                 for url in urls]
+        return paths[0] if len(paths) == 1 else paths
 
     @cached_property
     def output(self):
