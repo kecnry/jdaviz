@@ -1,120 +1,119 @@
 import multiprocessing
 import sys
-# this avoids:
-# ValueError: Key backend: 'module://matplotlib_inline.backend_inline' is not a valid value for backend; supported values are [...]
-# Although not 100% why, it has two effects:
-#  1. PyInstaller picks it up as a module to include
-#  2. It registers the backend, maybe earlier than it would be otherwise
-import matplotlib_inline
-import matplotlib_inline.backend_inline
 
-# We still see the above error on CI on jdaviz, and the PyInstaller
-# output recommends the following:
-import matplotlib
-matplotlib.use("module://matplotlib_inline.backend_inline")
-# since matplotlib 3.9 (see https://github.com/matplotlib/matplotlib/pull/27948),
-# it seems that matplotlib_inline.backend_inline is an alias for inline
-# so we make sure to communicate that to PyInstaller
-matplotlib.use("inline")
-from pathlib import Path
+# Dispatch frozen multiprocessing helpers before importing the application stack.
+if __name__ == "__main__":
+    multiprocessing.freeze_support()
+
 import os
+from pathlib import Path
 from urllib.parse import unquote, urlparse
 
 import jdaviz.cli
-from datetime import datetime
+from jdaviz.core.open_file_requests import OpenFileRequestServer
 
 
+OPEN_FILE_PATHS = []
+OPEN_FILE_CALLBACK = None
+MACOS_OPEN_FILES_DELEGATE = None
+MACOS_OPEN_FILES_HANDLER = None
 
-def _normalize_macos_path(arg):
+
+def _debug_open_event(stage, **details):
+    """Write opt-in file-open diagnostics without logging paths by default."""
+    log_path = os.environ.get('JDAVIZ_OPEN_DEBUG_LOG')
+    if not log_path:
+        return
+    try:
+        with open(log_path, 'a', encoding='utf-8') as log:
+            log.write(f"{stage}: {details!r}\n")
+    except OSError:
+        pass
+
+
+def _normalize_open_path(arg):
+    """Normalize an OS-delivered path or file URL without splitting path characters."""
     if not arg:
         return None
     candidate = str(arg).strip()
-    if candidate.startswith("file://"):
+    if candidate.startswith("file:"):
         parsed = urlparse(candidate)
         candidate = unquote(parsed.path)
+        if parsed.netloc and parsed.netloc not in ('', 'localhost'):
+            candidate = f"//{parsed.netloc}{candidate}"
+        # file:///C:/... is the common Windows file-URL representation.
+        if os.name == 'nt' and len(candidate) > 2 and candidate[0] == '/' and candidate[2] == ':':
+            candidate = candidate[1:]
     elif candidate.startswith("~/"):
         candidate = str(Path.home() / candidate[2:])
-    elif candidate.startswith("-psn_"):
-        return None
     elif candidate.startswith("-"):
         return None
-    if candidate and os.path.exists(candidate):
-        return candidate
-    if candidate and candidate.startswith("/"):
-        return candidate
+
+    path = Path(candidate).expanduser()
+    if path.is_file():
+        return str(path.absolute())
     return None
 
 
 def _save_open_files(filepaths):
-    uniq = []
-    seen = set()
+    """Collect each path once, preserving the path list as structured data."""
     for filepath in filepaths:
-        normalized = _normalize_macos_path(filepath)
-        if normalized is None or normalized in seen:
-            continue
-        uniq.append(normalized)
-        seen.add(normalized)
-    if uniq:
-        print(os.pathsep.join(uniq))
-        os.environ['JDAVIZ_OPEN_FILES'] = os.pathsep.join(uniq)
-    return uniq
+        normalized = _normalize_open_path(filepath)
+        if normalized is not None and normalized not in OPEN_FILE_PATHS:
+            OPEN_FILE_PATHS.append(normalized)
+    return list(OPEN_FILE_PATHS)
+
 
 def _install_macos_open_files_handler():
-    """Register the Finder open-file callback in the standard AppKit delegate style.
-
-    Finder sends document-open events through Cocoa, not argv. The app should handle
-    those events by storing the paths in JDAVIZ_OPEN_FILES and only then appending them
-    to sys.argv for the rest of the app startup sequence.
-    """
+    """Capture Finder document-open events without mutating parsed CLI arguments."""
     if sys.platform != "darwin" or not getattr(sys, "frozen", False):
         return
 
     try:
         import AppKit
+        from Foundation import NSObject
     except Exception:
         return
 
-    try:
-        from Foundation import NSObject
-    except Exception:
-        NSObject = None
-
+    global MACOS_OPEN_FILES_DELEGATE, MACOS_OPEN_FILES_HANDLER
     nsapp = AppKit.NSApplication.sharedApplication()
+    _debug_open_event('installing macOS open-file handlers',
+                      delegate_before=repr(nsapp.delegate()))
 
     def _handle_paths(filenames):
+        _debug_open_event('macOS open-files callback', filenames=list(filenames))
+        before = set(OPEN_FILE_PATHS)
         paths = _save_open_files(filenames)
-        for path in paths:
-            if path not in sys.argv:
-                sys.argv.append(path)
+        new_paths = [path for path in paths if path not in before]
+        _debug_open_event('macOS callback normalized paths', paths=new_paths)
+        if new_paths and OPEN_FILE_CALLBACK is not None:
+            OPEN_FILE_CALLBACK(new_paths)
         return bool(paths)
 
-    def _open_files_handler(filenames):
-        return _handle_paths(filenames)
+    try:
+        nsapp.setOpenFilesHandler_(_handle_paths)
+        MACOS_OPEN_FILES_HANDLER = _handle_paths
+        _debug_open_event('installed NSApplication open-files handler')
+    except Exception as e:
+        _debug_open_event('failed to install NSApplication open-files handler',
+                          error=repr(e))
+
+    class _FinderOpenFilesDelegate(NSObject):
+        def application_openFiles_(self, _application, filenames):
+            _handle_paths(filenames)
+
+        def application_openURLs_(self, _application, urls):
+            _handle_paths([str(url) for url in urls])
+            return True
 
     try:
-        nsapp.setOpenFilesHandler_(_open_files_handler)
-    except Exception:
-        pass
-
-    if NSObject is not None:
-        class _FinderOpenFilesDelegate(NSObject):
-            def applicationOpenFiles_(self, _sender, filenames):
-                return _handle_paths(filenames)
-
-            def applicationOpenURL_(self, _sender, url):
-                if url is not None:
-                    path = _normalize_macos_path(str(url))
-                    if path is not None:
-                        _save_open_files([path])
-                        if path not in sys.argv:
-                            sys.argv.append(path)
-                return True
-
-        try:
-            delegate = _FinderOpenFilesDelegate.alloc().init()
-            nsapp.setDelegate_(delegate)
-        except Exception:
-            pass
+        delegate = _FinderOpenFilesDelegate.alloc().init()
+        nsapp.setDelegate_(delegate)
+        # PyObjC delegate wrappers must remain strongly referenced.
+        MACOS_OPEN_FILES_DELEGATE = delegate
+        _debug_open_event('installed macOS delegate', delegate=repr(delegate))
+    except Exception as e:
+        _debug_open_event('failed to install macOS delegate', error=repr(e))
 
 
 def _filter_python_runtime_args(argv):
@@ -128,7 +127,8 @@ def _filter_python_runtime_args(argv):
             continue
         if arg == '-c' and i + 1 < len(argv):
             cmd = argv[i + 1]
-            if 'multiprocessing.resource_tracker' in cmd or 'from multiprocessing.resource_tracker import main' in cmd:
+            if ('multiprocessing.resource_tracker' in cmd or
+                    'from multiprocessing.resource_tracker import main' in cmd):
                 i += 2
                 continue
         filtered.append(arg)
@@ -136,188 +136,126 @@ def _filter_python_runtime_args(argv):
     return filtered
 
 
-def _register_macos_finder_filepaths():
-    """Store Finder-opened file paths for the CLI before multiprocessing boots."""
-    if sys.platform != "darwin" or not getattr(sys, "frozen", False):
+def _register_os_opened_files(argv):
+    """Collect file-association arguments on all platforms and Finder events on macOS."""
+    _debug_open_event('startup sys.argv', argv=list(argv), platform=sys.platform,
+                      frozen=getattr(sys, 'frozen', False))
+    if sys.platform == "darwin" and getattr(sys, "frozen", False):
+        _install_macos_open_files_handler()
+        candidates = _filter_python_runtime_args(list(argv))
+        try:
+            from Foundation import NSProcessInfo
+        except Exception:
+            NSProcessInfo = None
+        if NSProcessInfo is not None:
+            process_args = [
+                str(arg) for arg in NSProcessInfo.processInfo().arguments()[1:]
+            ]
+            _debug_open_event('macOS NSProcessInfo arguments', argv=process_args)
+            candidates.extend(_filter_python_runtime_args(process_args))
+    else:
+        candidates = list(argv)
+
+    # Do not reinterpret values supplied to ordinary CLI options as OS-open events.
+    positional = []
+    skip_next = False
+    options_with_values = {
+        '-fp', '--filepath', '-ff', '--file_format', '--layout', '--instrument',
+        '--browser', '--theme', '--verbosity', '--history-verbosity', '--host', '--port'
+    }
+    for arg in candidates:
+        if skip_next:
+            skip_next = False
+            continue
+        if arg in options_with_values:
+            skip_next = True
+            continue
+        if arg.startswith('-'):
+            continue
+        normalized = _normalize_open_path(arg)
+        if normalized is not None:
+            positional.append(normalized)
+
+    paths = _save_open_files(positional)
+    _debug_open_event('normalized startup file paths', paths=paths)
+    return paths
+
+
+def _prepare_cli_args(argv, clicked_files):
+    """Convert bare OS file arguments into the hidden clicked-file CLI option."""
+    original = _filter_python_runtime_args(list(argv))
+    options_with_values = {
+        '-fp', '--filepath', '-ff', '--file_format', '--layout', '--instrument',
+        '--browser', '--theme', '--verbosity', '--history-verbosity', '--host', '--port'
+    }
+    clicked_set = set(clicked_files)
+    args = []
+    skip_next = False
+    for arg in original:
+        if skip_next:
+            args.append(arg)
+            skip_next = False
+        elif arg in options_with_values:
+            args.append(arg)
+            skip_next = True
+        elif _normalize_open_path(arg) not in clicked_set:
+            args.append(arg)
+
+    existing = set()
+    for index, arg in enumerate(args[:-1]):
+        if arg == '--clicked-file':
+            existing.add(args[index + 1])
+    for filepath in clicked_files:
+        if filepath not in existing:
+            args.extend(['--clicked-file', filepath])
+    _debug_open_event('prepared CLI arguments', argv=args)
+    return args
+
+
+def _run():
+    def dispatch_file_open(paths):
+        from jdaviz.solara import receive_clicked_file_paths
+        receive_clicked_file_paths(paths)
+
+    global OPEN_FILE_CALLBACK
+    OPEN_FILE_CALLBACK = dispatch_file_open
+    clicked_files = _register_os_opened_files(sys.argv[1:])
+    _debug_open_event('clicked files passed to app', paths=clicked_files)
+
+    instance_server = OpenFileRequestServer(dispatch_file_open)
+    if not instance_server.is_primary:
+        instance_server.forward_or_raise(clicked_files)
         return
 
-    _install_macos_open_files_handler()
+    import matplotlib_inline
+    import matplotlib_inline.backend_inline  # noqa: F401
+    import matplotlib
 
-    candidates = _filter_python_runtime_args(list(sys.argv[1:]))
-    try:
-        from Foundation import NSProcessInfo
-    except Exception:
-        NSProcessInfo = None
-    if NSProcessInfo is not None:
-        candidates.extend(_filter_python_runtime_args([
-            str(arg) for arg in NSProcessInfo.processInfo().arguments()[1:]
-        ]))
+    # Help PyInstaller include and register the inline backend.
+    matplotlib.use("module://matplotlib_inline.backend_inline")
+    matplotlib.use("inline")
+    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+        user_home = Path.home()
+        jdaviz_cache = user_home / ".cache" / "jdaviz"
+        jdaviz_cache.mkdir(parents=True, exist_ok=True)
+        os.environ['JDAVIZ_CACHE_DIR'] = str(jdaviz_cache)
+        astropy_cache = user_home / ".cache" / "astropy"
+        astropy_cache.mkdir(parents=True, exist_ok=True)
+        os.environ['ASTROPY_CACHE_DIR'] = str(astropy_cache)
+        os.chdir(user_home)
 
-    _save_open_files(candidates)
+    orig_args = _filter_python_runtime_args(sys.argv[1:])
+    args = _prepare_cli_args(orig_args, clicked_files)
+    has_layout = any(a == '--layout' or a.startswith('--layout=') for a in orig_args)
+    if not has_layout:
+        args.extend(['--layout', 'flexible'])
 
+    if not any(a == '--browser' or a.startswith('--browser=') for a in args):
+        args.extend(['--browser', 'qt'])
 
-def detect_fileformat(filepath):
-
-    try:
-        from jdaviz.configs.deconfigged.helper import App as DeconfiggedHelper
-        from jdaviz.core.loaders.resolvers.file.file import PresetFileResolver
-        from jdaviz.core.registries import (loader_parser_registry, loader_importer_registry)
-    except Exception:
-        return []
-   
-    labels = []
-    
-    try:
-        helper = DeconfiggedHelper()
-        try:
-            resolver = PresetFileResolver(filepath, app=helper._app)
-        except Exception:
-            try:
-                resolver = PresetFileResolver.from_input(app=helper._app, inp=filepath)
-            except Exception:
-                resolver = None
-
-        parser_input = None
-        if resolver is not None:
-            try:
-                parser_input = resolver.parsed_input
-            except Exception:
-                parser_input = filepath
-        else:
-            parser_input = filepath
-
-        for parser_name, Parser in loader_parser_registry.members.items():
-            if parser_name == 'fits' or parser_name == 'asdf':
-                try:
-                    parser = Parser(helper._app, parser_input)
-                except Exception:
-                    continue
-                if not parser.is_valid:
-                    try:
-                        parser._cleanup()
-                    except Exception:
-                        pass
-                    continue
-
-                try:
-                    importer_input = parser.output
-                except Exception:
-                    try:
-                        parser._cleanup()
-                    except Exception:
-                        pass
-                    continue
-
-                for importer_name, Importer in loader_importer_registry.members.items():
-                    try:
-                        importer = Importer(app=helper._app, resolver=resolver, parser=parser, input=importer_input)
-                    except Exception:
-                        continue
-                    try:
-                        if importer.is_valid:
-                            labels.append(importer_name)
-                    except Exception:
-                        pass
-                    finally:
-                        if hasattr(importer, '_cleanup'):
-                            try:
-                                importer._cleanup()
-                            except Exception:
-                                pass
-
-                if hasattr(parser, '_cleanup'):
-                    try:
-                        parser._cleanup()
-                    except Exception:
-                        pass
-
-        if not labels:
-            labels.append('Cannot read file')
-
-    except Exception:
-        # any top-level failure: return what we have (possibly empty)
-        pass
-
-    return labels[0]
+    sys.argv = [sys.argv[0], *args]
+    jdaviz.cli._main()
 
 
 if __name__ == "__main__":
-    multiprocessing.freeze_support()
-    _register_macos_finder_filepaths()
-
-    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-
-        # Define a safe user-writable path (e.g., user's home folder)
-        user_home = Path.home()
-
-        # create jdaviz_cache directory to save downloaded files
-        jdaviz_cache = user_home / ".cache" / "jdaviz"
-        jdaviz_cache.mkdir(exist_ok=True)
-        os.environ['JDAVIZ_CACHE_DIR'] = str(jdaviz_cache)
-
-        # create astropy_cache directory to save downloaded files 
-        # (backup in case it had been deleted or astropy not installed)
-        astropy_cache = user_home / ".cache" / "astropy"
-        astropy_cache.mkdir(exist_ok=True)
-        os.environ['ASTROPY_CACHE_DIR'] = str(astropy_cache)
-
-        # Change Python's working directory to a writable directory
-        # This prevents Jdaviz from defaulting download_uri_to_path to the read-only _MEIPASS path
-        os.chdir(user_home)
-
-    orig_args = _filter_python_runtime_args(sys.argv.copy())
-    args = orig_args.copy()
-
-    open_files = [p for p in os.environ.get('JDAVIZ_OPEN_FILES', '').split(os.pathsep) if p]
-    existing_filepaths = set()
-    for i, arg in enumerate(args):
-        if arg in {"-fp", "--filepath"} and i + 1 < len(args):
-            existing_filepaths.add(args[i + 1])
-    for filepath in open_files:
-        if filepath not in args and filepath not in existing_filepaths:
-            args.extend(["--filepath", filepath])
-
-    # # Determine whether a layout argument was provided and whether it indicates 'flexible'
-    has_layout = any((a == '--layout' or a.startswith('--layout=')) for a in orig_args)
-    layout_is_flexible = False
-    for i, a in enumerate(orig_args):
-        if a == '--layout' and i + 1 < len(orig_args) and orig_args[i + 1].lower() == 'flexible':
-            layout_is_flexible = True
-            break
-        if a.startswith('--layout=') and a.split('=', 1)[1].lower() == 'flexible':
-            layout_is_flexible = True
-            break
-
-    # Detect whether the user provided file_format flags already
-    has_file_format = any((a == '--file_format' or a.startswith('--file_format=') or a == '-ff') for a in orig_args)
-
-    # If layout not provided, set default to flexible so double-click opens flexible layout
-    if not has_layout:
-        args.append('--layout')
-        args.append('flexible')
-        layout_is_flexible = True
-
-    if layout_is_flexible and open_files and not has_file_format:
-        for fpath in open_files:
-            label = detect_fileformat(fpath)
-
-            args.append('--file_format')
-            args.append(label)
-
-    # Change the browser to qt if not specified (preserve existing --browser=... form)
-    if "--browser" not in args and not any(a.startswith('--browser=') for a in orig_args):
-        args.append("--browser")
-        args.append("qt")
-
-    sys.argv = args
-
-    log_path = os.path.expanduser("~/Desktop/app_arguments_log.txt")
-
-    with open(log_path, "a") as f:
-        f.write(f"--- Launch Time: {datetime.now()} ---\n")
-        f.write(f"Number of arguments: {len(sys.argv)}\n")
-        f.write(f"Original args: {str(orig_args)}\n\n")
-        f.write(f"Full sys.argv: {str(sys.argv)}\n\n")
-        f.write(f"os eviron: {str(os.environ.get('JDAVIZ_OPEN_FILES', ''))}\n\n")
-
-    jdaviz.cli._main()
+    _run()

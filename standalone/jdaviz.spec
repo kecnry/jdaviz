@@ -25,10 +25,15 @@ icon_file = '../assets/app.ico' if sys.platform == 'win32' else '../assets/app.i
 
 a = Analysis(
     ["jdaviz-cli-entrypoint.py"],
-    pathex=[],
+    # PyInstaller analyzes the entrypoint from the standalone directory. Add the
+    # repository root explicitly so imports resolve to the source checkout and
+    # hook-jdaviz.py can collect its modules and data.
+    pathex=[str(Path(SPECPATH).resolve().parent.parent)],
     binaries=[],
     datas=datas,
-    hiddenimports=["rich.logging", 'glue.plugins.coordinate_helpers', 'glue.plugins.coordinate_helpers.link_helpers', 'AppKit', 'Foundation', 'objc'],
+    hiddenimports=["rich.logging", 'glue.plugins.coordinate_helpers',
+                   'glue.plugins.coordinate_helpers.link_helpers', 'AppKit', 'Foundation', 'objc',
+                   'jdaviz.cli', 'jdaviz.core.open_file_requests'],
     hookspath=["hooks"],
     hooksconfig={},
     runtime_hooks=[],
@@ -75,7 +80,6 @@ coll = COLLECT(
 plist = {
     'NSPrincipalClass': 'NSApplication',
     'NSAppleScriptEnabled': True,
-    'argv_emulation':True,
     'CFBundleDocumentTypes': [
         {
             'CFBundleTypeExtensions': ['fits', 'fit', 'fts', 'fitz', 'ftz', 'fz', 'asdf'],
@@ -93,5 +97,6 @@ app = BUNDLE(
     entitlements_file="entitlements.plist",
     bundle_identifier="edu.stsci.jdaviz",
     version=jdaviz.__version__,
+    argv_emulation=True,
     info_plist=plist
 )

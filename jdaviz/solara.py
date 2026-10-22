@@ -12,9 +12,34 @@ from jdaviz.app import custom_components
 config = None
 data_list = []
 format_list = []
+clicked_file_paths = []
 load_data_kwargs = {}
 jdaviz_verbosity = 'error'
 jdaviz_history_verbosity = 'info'
+_active_helper = None
+_pending_clicked_file_paths = []
+_clicked_file_paths_lock = threading.Lock()
+
+
+def receive_clicked_file_paths(filepaths):
+    """Add OS-opened paths to the live helper, or queue until it is created."""
+    paths = list(dict.fromkeys(str(path) for path in filepaths))
+    with _clicked_file_paths_lock:
+        helper = _active_helper
+        if helper is None:
+            _pending_clicked_file_paths.extend(paths)
+            return
+    helper._app._add_clicked_file_loaders(paths)
+
+
+def _set_active_helper(helper):
+    global _active_helper
+    with _clicked_file_paths_lock:
+        _active_helper = helper
+        pending_paths = list(dict.fromkeys(_pending_clicked_file_paths))
+        _pending_clicked_file_paths.clear()
+    if pending_paths:
+        helper._app._add_clicked_file_loaders(pending_paths)
 
 
 @solara.lab.on_kernel_start
@@ -50,9 +75,12 @@ def get_app_or_launcher():
     if config is None or not hasattr(jdaviz.configs, config):
         if config == 'Flexible':
             viz = jdaviz.gca()
-            if not len(data_list):
+            _set_active_helper(viz)
+            if clicked_file_paths:
+                receive_clicked_file_paths(clicked_file_paths)
+            if not len(data_list) and not clicked_file_paths:
                 jdaviz.loaders['file'].open_in_tray()
-            else:
+            elif data_list:
                 with jdaviz.batch_load():
                     for filename, format in zip(data_list, format_list):
                         jdaviz.load(filename, format=format)
@@ -88,7 +116,7 @@ def Jdaviz():
     # We need to use use_effect so that the initial Solara render happens before the app
     # instantiates internal Solara components (file_drop, file_browser), which would otherwise
     # be detected and rendered at the top level outside the app.
-    solara.use_effect(load_app, [config, data_list, format_list])
+    solara.use_effect(load_app, [config, data_list, format_list, clicked_file_paths])
 
     return solara.Column(children=[app_or_launcher] if app_or_launcher is not None else [])
 

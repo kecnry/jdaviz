@@ -3734,6 +3734,61 @@ class PrivateApplication(VuetifyTemplate, HubListener):
 
         return ldr
 
+    def _add_clicked_file_loaders(self, filepaths):
+        """Add one pending preset file loader for each OS-opened file.
+
+        Invalid files are reported individually so they do not prevent other
+        files in the same open request from being added.
+        """
+        added = []
+        for filepath in filepaths:
+            path = pathlib.Path(filepath).expanduser().absolute()
+            if not path.is_file():
+                self.hub.broadcast(SnackbarMessage(
+                    f"Could not add clicked file '{path}': file does not exist.",
+                    sender=self, color='error'))
+                continue
+
+            existing_names = {item['name'] for item in self.state.loader_items}
+            suffix = path.suffix
+            stem = path.stem
+            max_name_length = 60
+            if len(path.name) > max_name_length:
+                stem_length = max_name_length - len(suffix) - 1
+                if stem_length < 1:
+                    suffix = suffix[-(max_name_length - 2):]
+                    stem_length = 1
+                stem = f"{stem[:stem_length]}…"
+            base_name = f'{stem}{suffix}'
+            name = base_name
+            index = 2
+            while name in existing_names:
+                duplicate_suffix = f' ({index})'
+                stem_length = max_name_length - len(suffix) - len(duplicate_suffix)
+                name = f'{stem[:stem_length]}{duplicate_suffix}{suffix}'
+                index += 1
+
+            try:
+                loader = self._add_custom_loader('file', str(path), name=name)
+            except Exception as e:
+                self.hub.broadcast(SnackbarMessage(
+                    f"Could not prepare clicked file '{path}': {e}",
+                    sender=self, color='error'))
+                continue
+
+            added.append(loader)
+
+        if added:
+            # Select after all loader_items updates so the frontend's filtered-list
+            # watcher cannot replace the requested selection with the previous default.
+            first_loader_name = added[0]._obj._registry_label
+            added[0].open_in_tray()
+            self.state.loader_selected = first_loader_name
+            self.state.drawer_content = 'loaders'
+            self.state.add_subtab = 0
+
+        return added
+
     def update_tray_items_from_registry(self):
         if self.config != 'deconfigged':
             raise NotImplementedError("update_tray_items_from_registry is only "

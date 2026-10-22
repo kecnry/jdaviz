@@ -598,3 +598,31 @@ def test_add_custom_loader_open_in_tray(deconfigged_helper, tmp_path):
 
     # The loader should be returned and the name should match
     assert repr(loader) == '<test API>'
+
+
+def test_add_clicked_file_loaders(deconfigged_helper, tmp_path):
+    paths = [tmp_path / 'one.fits', tmp_path / 'two.fits']
+    for path in paths:
+        path.touch()
+
+    loaders = deconfigged_helper._app._add_clicked_file_loaders(paths)
+
+    assert len(loaders) == 2
+    assert [loader._obj.filepath for loader in loaders] == [str(path) for path in paths]
+    assert [loader._obj._registry_label for loader in loaders] == [
+        'one.fits', 'two.fits'
+    ]
+    assert deconfigged_helper._app.state.drawer_content == 'loaders'
+    assert deconfigged_helper._app.state.loader_selected == 'one.fits'
+
+
+def test_add_clicked_file_loader_truncates_long_filename(deconfigged_helper, tmp_path):
+    filename = f"{'long-' * 20}image.fits"
+    filepath = tmp_path / filename
+    filepath.touch()
+
+    [loader] = deconfigged_helper._app._add_clicked_file_loaders([filepath])
+
+    loader_name = loader._obj._registry_label
+    assert len(loader_name) <= 60
+    assert loader_name.endswith('….fits')
