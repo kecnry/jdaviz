@@ -72,7 +72,8 @@ def _install_macos_open_files_handler():
     try:
         import AppKit
         from Foundation import NSObject
-    except Exception:
+    except Exception as e:
+        _debug_open_event('macOS open-file support unavailable', error=repr(e))
         return
 
     global MACOS_OPEN_FILES_DELEGATE, MACOS_OPEN_FILES_HANDLER
