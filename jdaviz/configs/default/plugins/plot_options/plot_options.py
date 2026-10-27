@@ -19,13 +19,15 @@ from glue.viewers.image.composite_array import COLOR_CONVERTER
 from glue_jupyter.bqplot.image.state import BqplotImageLayerState
 from glue_jupyter.common.toolbar_vuetify import read_icon
 from scipy.interpolate import PchipInterpolator
-from traitlets import Any, Dict, Float, Bool, Int, List, Unicode, observe
+from specutils import Spectrum
+from traitlets import Any, Dict, Float, Bool, Int, List, Unicode, observe, validate
 
 from jdaviz.core.registries import tray_registry
 from jdaviz.core.template_mixin import (PluginTemplateMixin, ViewerSelectMixin, LayerSelect,
                                         PlotOptionsSyncState, Plot,
                                         skip_if_no_updates_since_last_active, with_spinner)
-from jdaviz.core.events import ChangeRefDataMessage, ViewerAddedMessage
+from jdaviz.core.events import (AddDataMessage, RemoveDataMessage, ChangeRefDataMessage,
+                                GlobalDisplayUnitChanged, ViewerAddedMessage)
 from jdaviz.core.user_api import PluginUserApi
 from jdaviz.core.tools import ICON_DIR
 from jdaviz.core.custom_traitlets import IntHandleEmpty
@@ -123,6 +125,13 @@ class PlotOptions(PluginTemplateMixin, ViewerSelectMixin):
     * :meth:`~jdaviz.core.template_mixin.PluginTemplateMixin.close_in_tray`
     * ``viewer`` (:class:`~jdaviz.core.template_mixin.ViewerSelect`):
     * ``viewer_multiselect``
+        * ``spectral_y_type`` (str): Quantity for selected spectrum viewers: ``Flux`` or
+            ``Surface Brightness``. Reading returns an empty string for mixed/unknown quantities.
+            Setting a quantity validates all selected spectrum viewers atomically and disables
+            their sync to the app. Other viewer types are ignored.
+        * ``spectral_y_type_sync`` (bool or None): Whether selected spectrum viewers follow
+            the app quantity. Reading returns None for mixed/no spectrum viewers. Set True to
+            validate and adopt the app quantity, or False to freeze the current quantities.
     * ``layer`` (:class:`~jdaviz.core.template_mixin.LayerSelect`):
     * ``layer_multiselect``
     * :meth:`select_all`
@@ -249,6 +258,15 @@ class PlotOptions(PluginTemplateMixin, ViewerSelectMixin):
 
     # read-only display units
     display_units = Dict().tag(sync=True)
+
+    # Quantity changes must go through UnitConversion's atomic setter, not
+    # PlotOptionsSyncState's per-state assignment loop.
+    spectral_y_type = Unicode().tag(sync=True)
+    spectral_y_type_sync = Bool(default_value=None, allow_none=True).tag(sync=True)
+    spectral_y_type_available = Bool(False).tag(sync=True)
+    spectral_y_type_mixed = Bool(False).tag(sync=True)
+    spectral_y_type_items = List().tag(sync=True)
+    spectral_y_type_error = Unicode().tag(sync=True)
 
     viewer_limits = Dict().tag(sync=True)
 
@@ -836,6 +854,15 @@ class PlotOptions(PluginTemplateMixin, ViewerSelectMixin):
         self.hub.subscribe(self, ChangeRefDataMessage,
                            handler=self._on_refdata_change)
 
+        self.hub.subscribe(self, GlobalDisplayUnitChanged,
+                           handler=self._on_global_display_unit_changed)
+        for message in (AddDataMessage, RemoveDataMessage):
+            self.hub.subscribe(self, message, handler=self._refresh_spectral_y_type)
+        self._spectral_y_type_ready = True
+        for viewer in self._app._viewer_store.values():
+            self._watch_spectral_y_type(viewer)
+        self._refresh_spectral_y_type()
+
         if self.config == 'deconfigged':
             self.observe_traitlets_for_relevancy(traitlets_to_observe=['viewer_items'])
 
@@ -846,7 +873,8 @@ class PlotOptions(PluginTemplateMixin, ViewerSelectMixin):
         if self.config == "cubeviz":
             expose += ['uncertainty_visible', 'volume_level', 'sonified_audible']
         if self.config != "imviz":
-            expose += ['x_min', 'x_max', 'y_min', 'y_max',
+            expose += ['spectral_y_type', 'spectral_y_type_sync',
+                       'x_min', 'x_max', 'y_min', 'y_max',
                        'axes_visible', 'line_visible', 'line_color', 'line_width', 'line_opacity',
                        'line_as_steps', 'uncertainty_visible']
         if self.config != "specviz":
@@ -954,13 +982,156 @@ class PlotOptions(PluginTemplateMixin, ViewerSelectMixin):
             self.layer_multiselect = True
             self.layer.select_all()
 
+    def _spectral_y_type_viewers(self):
+        if not hasattr(self, 'viewer'):
+            return []
+        viewers = self.viewer.selected_obj
+        if not isinstance(viewers, list):
+            viewers = [viewers]
+        return [
+            viewer for viewer in viewers
+            if getattr(viewer, 'default_class', None) is Spectrum
+            and isinstance(viewer.state, ProfileViewerState)
+        ]
+
+    def _spectral_y_type_unit_conversion(self):
+        try:
+            uc = self._app.get_tray_item_from_name('g-unit-conversion')
+        except KeyError:
+            return None
+        # Plot Options can be initialized before Unit Conversion, or used in a
+        # configuration without its viewer-local quantity backend.
+        if not all(callable(getattr(uc, name, None)) for name in
+                   ('viewer_y_type', 'set_viewer_y_type', 'quantity_change_error')):
+            return None
+        return uc
+
+    def _watch_spectral_y_type(self, viewer):
+        if getattr(viewer, 'default_class', None) is not Spectrum:
+            return
+        if not isinstance(viewer.state, ProfileViewerState):
+            return
+        for name in ('spectral_y_type', 'spectral_y_type_sync', 'y_display_unit'):
+            if hasattr(viewer.state, name):
+                viewer.state.add_callback(name, self._refresh_spectral_y_type)
+
+    @observe('viewer_selected', 'viewer_multiselect')
+    def _refresh_spectral_y_type(self, *args):
+        if (not getattr(self, '_spectral_y_type_ready', False)
+                or getattr(self, '_refreshing_spectral_y_type', False)
+                or getattr(self, '_setting_spectral_y_type', False)):
+            return
+        if self.viewer_multiselect != isinstance(self.viewer_selected, list):
+            # ViewerSelect has not normalized the selection to the new mode
+            # yet. Its subsequent viewer_selected notification will refresh us.
+            return
+        self._refreshing_spectral_y_type = True
+        try:
+            if (args and isinstance(args[0], dict)
+                    and args[0].get('name') in ('viewer_selected', 'viewer_multiselect')
+                    and hasattr(self.viewer, '_clear_cache')):
+                # Selection observers can run before ViewerSelect clears its
+                # cached selected_item/selected_obj (especially when unmixing).
+                self.viewer._clear_cache()
+            viewers = self._spectral_y_type_viewers()
+            uc = self._spectral_y_type_unit_conversion()
+            self.spectral_y_type_available = bool(viewers and uc is not None)
+            if uc is not None and uc is not getattr(self, '_spectral_y_type_backend', None):
+                self._spectral_y_type_backend = uc
+                names = [name for name in ('spectral_y_type_error', 'spectral_y_type_selected')
+                         if name in uc.traits()]
+                if names:
+                    uc.observe(self._refresh_spectral_y_type, names=names)
+            quantities = [uc.viewer_y_type(viewer) for viewer in viewers] if uc else []
+            syncs = [viewer.state.spectral_y_type_sync for viewer in viewers] if uc else []
+            self.spectral_y_type_mixed = len(set(quantities)) > 1
+            self.spectral_y_type = quantities[0] if quantities and not self.spectral_y_type_mixed else ''  # noqa
+            self.spectral_y_type_sync = syncs[0] if syncs and len(set(syncs)) == 1 else None
+            items = []
+            reasons = []
+            if self.spectral_y_type_available:
+                for quantity in ('Flux', 'Surface Brightness'):
+                    reason = uc.quantity_change_error(viewers, quantity)
+                    items.append({'title': quantity, 'value': quantity,
+                                  'props': {'disabled': bool(reason)}, 'reason': reason})
+                    if reason:
+                        reasons.append(reason)
+                global_error = getattr(uc, 'spectral_y_type_error', '')
+                if global_error:
+                    reasons.append(global_error)
+            self.spectral_y_type_items = items
+            self.spectral_y_type_error = '\n'.join(dict.fromkeys(reasons))
+            if viewers:
+                for axis, attr in (('spectral', 'x_display_unit'), ('flux', 'y_display_unit')):
+                    units = {getattr(viewer.state, attr, '') for viewer in viewers}
+                    self.display_units[axis] = units.pop() if len(units) == 1 else ''
+                self.send_state('display_units')
+        finally:
+            self._refreshing_spectral_y_type = False
+
+    @validate('spectral_y_type', 'spectral_y_type_sync')
+    def _validate_spectral_y_type(self, proposal):
+        if getattr(self, '_refreshing_spectral_y_type', False):
+            return proposal['value']
+        name, value = proposal['trait'].name, proposal['value']
+        viewers = self._spectral_y_type_viewers()
+        uc = self._spectral_y_type_unit_conversion()
+        reason = ''
+        if not viewers or uc is None:
+            reason = 'Select a spectrum viewer with viewer-local quantity controls available.'
+        elif name == 'spectral_y_type':
+            if value not in ('Flux', 'Surface Brightness'):
+                reason = 'Choose Flux or Surface Brightness.'
+            else:
+                reason = uc.quantity_change_error(viewers, value)
+        elif value is None:
+            reason = 'Set spectral_y_type_sync to True or False; None only represents mixed state.'
+        elif value:
+            reason = uc.quantity_change_error(viewers, uc.spectral_y_type_selected)
+        if reason:
+            self.spectral_y_type_error = reason
+            self.send_state(name)
+            raise ValueError(reason)
+        return value
+
+    @observe('spectral_y_type', 'spectral_y_type_sync')
+    def _set_spectral_y_type(self, change):
+        if getattr(self, '_refreshing_spectral_y_type', False):
+            return
+        uc = self._spectral_y_type_unit_conversion()
+        kwargs = ({'quantity': change['new']} if change['name'] == 'spectral_y_type'
+                  else {'sync': change['new']})
+        self._setting_spectral_y_type = True
+        error = ''
+        try:
+            # Traitlets bypasses custom validators for an allowed None. It is
+            # only a display sentinel here, never an instruction to the backend.
+            if change['name'] == 'spectral_y_type_sync' and change['new'] is None:
+                raise ValueError('Set spectral_y_type_sync to True or False; '
+                                 'None only represents mixed state.')
+            uc.set_viewer_y_type(self._spectral_y_type_viewers(), **kwargs)
+        except ValueError as exc:
+            error = str(exc)
+            raise
+        finally:
+            self._setting_spectral_y_type = False
+            self._refresh_spectral_y_type()
+            if error:
+                self.spectral_y_type_error = error
+
+    def vue_set_spectral_y_type(self, change):
+        # Keep failed frontend edits in sync with the unchanged backend. Python
+        # assignments instead propagate the actionable ValueError to the caller.
+        try:
+            setattr(self, change['name'], change['value'])
+        except ValueError:
+            self.send_state(change['name'])
+
     def _on_global_display_unit_changed(self, *args):
-        sv = self.spectrum_viewer
-        self.display_units['spectral'] = sv.state.x_display_unit
-        self.display_units['flux'] = sv.state.y_display_unit
-        self.send_state('display_units')
+        self._refresh_spectral_y_type()
 
     def _on_refdata_change(self, *args):
+        self._refresh_spectral_y_type()
         if self._app._align_by.lower() == 'wcs':
             self.display_units['image'] = 'deg'
         else:
@@ -973,6 +1144,9 @@ class PlotOptions(PluginTemplateMixin, ViewerSelectMixin):
         viewer.state.add_callback('layers',
                                   lambda msg, v=viewer: self._layers_changed(viewer=v))
         self._watch_layer_visibility(viewer)
+
+        self._watch_spectral_y_type(viewer)
+        self._refresh_spectral_y_type()
 
     def _watch_layer_visibility(self, viewer):
         # Register a callback on each layer's ``visible`` attribute so that the
@@ -989,6 +1163,7 @@ class PlotOptions(PluginTemplateMixin, ViewerSelectMixin):
     def _layers_changed(self, msg=None, viewer=None):
         # We need msg first in the keyword arguments to catch the msg value from the observe,
         # even though we don't end up using it
+        self._refresh_spectral_y_type()
         if self.viewer_multiselect or not hasattr(self, 'viewer'):
             self.active_layer = ""
             return

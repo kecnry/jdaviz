@@ -7,7 +7,7 @@ import numpy as np
 from specutils import Spectrum
 from traitlets import Bool, List, observe
 
-from jdaviz.core.events import SnackbarMessage
+from jdaviz.core.events import SnackbarMessage, GlobalDisplayUnitChanged
 from jdaviz.core.registries import loader_importer_registry
 from jdaviz.core.loaders.importers import (BaseImporterToDataCollection,
                                            SpectrumInputExtensionsMixin,
@@ -40,6 +40,12 @@ class SpectrumImporter(BaseImporterToDataCollection, SpectrumInputExtensionsMixi
                                                     self.input._file.closed):
                 return False
 
+            try:
+                uc = self._app.get_tray_item_from_name('g-unit-conversion')
+            except KeyError:
+                uc = None
+            if uc is not None and any(uc.data_y_error(spec, viewer) for spec in self.output):
+                return False
             viewer_x_unit = getattr(viewer.state, 'x_display_unit', None)
 
             # if the viewer unit is None, its an empty viewer and anything
@@ -61,9 +67,17 @@ class SpectrumImporter(BaseImporterToDataCollection, SpectrumInputExtensionsMixi
 
         self.viewer.add_filter(viewer_compatible_units)
         self.viewer.select_default()
+        self.hub.subscribe(self, GlobalDisplayUnitChanged,
+                   handler=self._refresh_quantity_viewers)
 
         # set default data-label
         self._on_extension_change()
+
+    def _refresh_quantity_viewers(self, msg):
+        if isinstance(self.input, HDUList) and (self.input._file is not None
+                                               and self.input._file.closed):
+            return
+        self.viewer._update_items()
 
     @staticmethod
     def _get_supported_viewers():
@@ -111,7 +125,7 @@ class SpectrumImporter(BaseImporterToDataCollection, SpectrumInputExtensionsMixi
     @property
     def user_api(self):
         expose = ['extension', 'unc_extension', 'mask_extension',
-                  'concatenate']
+                  'concatenate', 'spectral_y_type']
         return ImporterUserApi(self, expose)
 
     @property

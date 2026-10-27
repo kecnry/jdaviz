@@ -43,6 +43,53 @@ def valid_glue_display_unit(unit_str, viewer, axis='x'):
     return choices_str[ind]
 
 
+def spectral_y_conversion_error(data, target_unit):
+    """Explain why a spectrum cannot use a display unit, without changing data.
+
+    Accept either an importer Spectrum or a Glue dataset.  In particular, do
+    not use ``flux_unit_conversion`` as a capability test: its legacy fallback
+    may return values in a different solid-angle convention than requested.
+    """
+    if not target_unit:
+        return ''
+    source = target = None
+    try:
+        spec = data if isinstance(data, Spectrum) else data.get_object(cls=Spectrum)
+        source = spec.flux.unit
+        target = u.Unit(target_unit)
+        if source == target:
+            return ''
+        # Preserve support for nonphysical axes, but never relabel an
+        # unconvertible count/dimensionless spectrum as physical flux.
+        meta = getattr(data, 'meta', {})
+        area = meta.get('_pixel_scale_factor', spec.meta.get('_pixel_scale_factor'))
+        if area is None:
+            area = meta.get('PIXAR_SR', spec.meta.get('PIXAR_SR'))
+        if area is not None:
+            if isinstance(area, u.Quantity):
+                area = area.to_value(u.sr) if area.unit.is_equivalent(u.sr) else area.value
+            area = np.asarray(area)
+            if not np.all(np.isfinite(area) & (area > 0)):
+                return 'the solid-angle conversion area must be finite and positive'
+        equivs = all_flux_unit_conversion_equivs(area, spec.spectral_axis)
+        # Unit equivalence alone does not exercise wavelength/area array
+        # broadcasting, so also evaluate a representative spectral profile.
+        values = np.ones(spec.spectral_axis.shape)
+        try:
+            (values * source).to(target, equivalencies=equivs)
+        except u.UnitConversionError:
+            converted = flux_unit_conversion(values, source, target, equivs, with_unit=True)
+            if converted.unit != target:
+                return f'conversion produced {converted.unit}, not requested {target}'
+    except (u.UnitConversionError, ValueError, TypeError, AttributeError) as exc:
+        if (source is not None and target is not None
+            and is_unit_per_solid_angle(source) != is_unit_per_solid_angle(target)):
+            return ('conversion requires compatible solid-angle/area information '
+                    f'({source} to {target})')
+        return f'cannot convert to {target_unit}: {exc}'
+    return ''
+
+
 def all_flux_unit_conversion_equivs(pixar_sr=None, cube_wave=None):
     """
     Combines commonly used flux unit conversion equivalencies for

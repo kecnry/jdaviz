@@ -66,6 +66,17 @@
       hint="Select the viewer to use for the new data."
     ></plugin-viewer-create-new>
 
+    <v-select
+      v-if="viewer_create_new_selected === '1D Spectrum'"
+      v-model="spectral_y_type"
+      :items="[{title: 'App Default', value: ''},
+               {title: 'Flux', value: 'Flux'},
+               {title: 'Surface Brightness', value: 'Surface Brightness'}]"
+      label="Spectral Quantity"
+      hint="Only applies to the new viewer. App Default follows the app setting; an explicit quantity disables synchronization."
+      persistent-hint
+    ></v-select>
+
     <loader-import-button
       :spinner="import_spinner"
       :disabled_msg="import_disabled_msg"

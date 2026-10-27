@@ -29,6 +29,8 @@ class FreezableState:
 
 class FreezableProfileViewerState(ProfileViewerState, FreezableState):
     show_uncertainty = DDCProperty(False, docstring='Whether to show data uncertainties')
+    spectral_y_type = CallbackProperty('', docstring='Viewer-local spectral quantity')
+    spectral_y_type_sync = CallbackProperty(True, docstring='Follow app spectral quantity')
 
     def _reset_x_limits(self, *event):
         # override glue's _reset_x_limits to account for all layers,

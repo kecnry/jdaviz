@@ -185,7 +185,10 @@ class MomentMap(PluginTemplateMixin, DatasetSelectMixin, SpectralSubsetSelectMix
 
     @observe("dataset_selected", "n_moment")
     def _set_data_units(self, event={}):
-
+        if isinstance(event, GlobalDisplayUnitChanged) and event.axis == 'spectral_y':
+            # Moment output uses surface-brightness family units, not a
+            # particular spectrum viewer's flux/SB quantity.
+            return
         if isinstance(self.n_moment, str) or self.n_moment < 0:
             return
         unit_options_index = min(self.n_moment, 2)

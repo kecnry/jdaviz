@@ -260,6 +260,49 @@
       </j-flex-row>
     </div>
 
+    <div v-if="spectral_y_type_available">
+      <v-select
+        variant="underlined"
+        attach
+        :menu-props="{ location: 'bottom start' }"
+        :items="spectral_y_type_items"
+        item-title="title"
+        item-value="value"
+        :model-value="spectral_y_type"
+        @update:model-value="set_spectral_y_type({name: 'spectral_y_type', value: $event})"
+        :label="api_hints_enabled ? 'plg.spectral_y_type = ' : 'Spectrum Y Quantity'"
+        :class="api_hints_enabled ? 'api-hint' : null"
+        :placeholder="spectral_y_type_mixed ? 'Mixed quantities' : 'Choose quantity'"
+        :hint="spectral_y_type_mixed ? 'Mixed quantities. Choose a quantity to apply to all selected spectrum viewers and turn off app sync.' : 'Applies only to selected spectrum viewers. Choosing a quantity turns off app sync.'"
+        persistent-hint
+        density="compact"
+      >
+        <template v-slot:item="{ props, item }">
+          <v-list-item v-bind="props" :subtitle="item.raw.reason || undefined" />
+        </template>
+      </v-select>
+      <plugin-switch
+        :value="spectral_y_type_sync === true"
+        @update:value="set_spectral_y_type({name: 'spectral_y_type_sync', value: $event})"
+        label="Sync spectrum quantity to app"
+        api_hint="plg.spectral_y_type_sync = "
+        :api_hints_enabled="api_hints_enabled"
+        :hint="spectral_y_type_sync === null ? 'Mixed sync state. Turn on to adopt the app quantity for all selected spectrum viewers, or turn off below to freeze their current quantities.' : 'Turn off to freeze the current quantity; turn on to adopt and follow the app quantity.'"
+      />
+      <j-flex-row v-if="spectral_y_type_sync === null" justify="end">
+        <plugin-action-button
+          :results_isolated_to_plugin="false"
+          :api_hints_enabled="api_hints_enabled"
+          @click="set_spectral_y_type({name: 'spectral_y_type_sync', value: false})"
+        >
+          {{ api_hints_enabled ? 'plg.spectral_y_type_sync = False' : 'Turn off sync for selected spectra' }}
+        </plugin-action-button>
+      </j-flex-row>
+      <v-alert v-if="spectral_y_type_error" type="warning" density="compact" style="white-space: pre-line; margin-top: 8px">
+        {{ spectral_y_type_error }}
+      </v-alert>
+    </div>
+
     <!-- GENERAL:AXES -->
     <glue-state-sync-wrapper v-if="axes_visible_sync.in_subscribed_states && viewer_selected.length > 0 && config !== 'imviz'" :sync="axes_visible_sync" :multiselect="viewer_multiselect" @unmix-state="unmix_state('axes_visible')">
       <plugin-switch

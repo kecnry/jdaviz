@@ -1641,7 +1641,19 @@ class PrivateApplication(VuetifyTemplate, HubListener):
                 for label in labels:
                     self.data_collection.remove_subset_group(subset_grp_labels[label])
 
-    def _get_display_unit(self, axis):
+    def _get_display_unit(self, axis, viewer=None):
+        """Return a display unit, optionally in a specific spectral-y viewer context.
+
+        Without a viewer, spectral-y retains its app-default meaning.  An explicit
+        viewer must not fall back to that default when its quantity is overridden.
+        """
+        if axis == 'spectral_y' and viewer is not None:
+            if isinstance(viewer, str):
+                viewer = self.get_viewer(viewer)
+            y_unit = getattr(viewer.state, 'y_display_unit', None)
+            if y_unit:
+                return y_unit
+
         if self._jdaviz_helper is None:
             # cannot access either the plugin or the spectrum viewer.
             # Plugins that access the unit at this point will need to
@@ -1668,7 +1680,8 @@ class PrivateApplication(VuetifyTemplate, HubListener):
                 sv = self.get_viewer(viewer_name)
                 return sv.data()[0].spectral_axis.unit
             elif axis in ('flux', 'sb', 'spectral_y'):
-                sv = self.get_viewer(viewer_name)
+                sv = (viewer if axis == 'spectral_y' and viewer is not None
+                      else self.get_viewer(viewer_name))
                 sv_y_unit = sv.data()[0].flux.unit
                 if axis == 'spectral_y':
                     return sv_y_unit
@@ -1707,7 +1720,7 @@ class PrivateApplication(VuetifyTemplate, HubListener):
             else:
                 raise ValueError(f"could not find units for axis='{axis}'")
         if axis == 'spectral_y':
-            return uc.spectral_y_unit
+            return uc.viewer_y_unit(viewer) if viewer is not None else uc.spectral_y_unit
         try:
             return getattr(uc, f'{axis}_unit_selected')
         except AttributeError:

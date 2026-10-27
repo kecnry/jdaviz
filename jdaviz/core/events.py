@@ -559,10 +559,11 @@ class GlobalDisplayUnitChanged(Message):
     changed, which is used app-wide to inform display units that depend on the
     unit choice and flux<>sb toggle of the spectrum viewer.'''
 
-    def __init__(self, axis, unit, *args, **kwargs):
+    def __init__(self, axis, unit, *args, viewer=None, **kwargs):
         super().__init__(*args, **kwargs)
         self._axis = axis
         self._unit = unit
+        self.viewer = viewer
 
     @property
     def axis(self):

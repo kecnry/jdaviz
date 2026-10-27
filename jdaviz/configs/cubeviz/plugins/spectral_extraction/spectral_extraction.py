@@ -379,16 +379,24 @@ class SpectralExtraction3D(PluginTemplateMixin, ApertureSubsetSelectMixin,
             self.background.scale_factor = self.slice_spectral_value/self.reference_spectral_value
 
     def _on_global_display_unit_changed(self, msg=None):
+        # The preview currently lives in the first slice-indicator viewer,
+        # independently of the selected results destination.
+        viewers = self.slice_indicator_viewers
+        viewer = viewers[0] if viewers else None
+        if msg is not None and msg.viewer is not None:
+            target = self._app.get_viewer(msg.viewer) if isinstance(msg.viewer, str) else msg.viewer
+            if target is not viewer:
+                return
         if msg is None:
             self.flux_units = str(self._app._get_display_unit('flux'))
             self.sb_units = str(self._app._get_display_unit('sb'))
-            self.spectrum_y_units = str(self._app._get_display_unit('spectral_y'))
+            self.spectrum_y_units = str(self._app._get_display_unit('spectral_y', viewer=viewer))
         elif msg.axis == 'flux':
             self.flux_units = str(msg.unit)
         elif msg.axis == 'sb':
             self.sb_units = str(msg.unit)
         elif msg.axis == 'spectral_y':
-            self.spectrum_y_units = str(msg.unit)
+            self.spectrum_y_units = str(self._app._get_display_unit('spectral_y', viewer=viewer))
             # no need to update results_units as separate messages will have been
             # sent by unit conversion for flux and/or sb.
             # updates to spectrum_y_units will trigger updating the extraction preview

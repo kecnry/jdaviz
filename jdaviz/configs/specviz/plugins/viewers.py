@@ -53,6 +53,12 @@ class Spectrum1DViewer(JdavizProfileView, WithSliceIndicator):
         super().__init__(*args, **kwargs)
 
         def compatible_units(data):
+            try:
+                uc = self.jdaviz_app.get_tray_item_from_name('g-unit-conversion')
+            except KeyError:
+                uc = None
+            if uc is not None and uc.data_y_error(data, self):
+                return False
             if not len(self.layers):
                 return True
 
@@ -78,7 +84,9 @@ class Spectrum1DViewer(JdavizProfileView, WithSliceIndicator):
                 spectral_unit_conversion([1], data_xunit, viewer_xunit)
             except u.UnitConversionError:
                 return False
-            equivs = all_flux_unit_conversion_equivs(cube_wave=[1]*u.Unit(viewer_xunit))
+            equivs = all_flux_unit_conversion_equivs(
+                pixar_sr=data.meta.get('_pixel_scale_factor', data.meta.get('PIXAR_SR')),
+                cube_wave=[1]*u.Unit(viewer_xunit))
             try:
                 flux_unit_conversion([1], data_yunit, viewer_yunit, equivalencies=equivs)
             except u.UnitConversionError:

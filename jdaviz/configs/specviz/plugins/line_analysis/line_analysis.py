@@ -251,6 +251,12 @@ class LineAnalysis(PluginTemplateMixin, DatasetSelectMixin, TableMixin,
                 self._calculate_statistics(msg)
 
     def _on_global_display_unit_changed(self, msg):
+        if msg.viewer is not None:
+            viewer = self._app.get_viewer(msg.viewer) if isinstance(msg.viewer, str) else msg.viewer
+            # Continuum marks can use every viewer containing this dataset.
+            # Do not restrict notifications to the app's first spectrum viewer.
+            if not any(layer.layer.label == self.dataset_selected for layer in viewer.layers):
+                return
         update_marks = msg.axis != 'spectral'
         self._calculate_statistics(msg, update_marks=update_marks)
 

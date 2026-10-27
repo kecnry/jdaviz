@@ -7,7 +7,7 @@ from glue.core.subset_group import GroupedSubset
 from glue_jupyter.bqplot.image import BqplotImageView
 from specreduce import tracing
 from specutils import Spectrum
-from traitlets import Bool, List, Unicode, observe
+from traitlets import Bool, List, Unicode, observe, validate
 
 from jdaviz.configs.default.plugins.viewers import JdavizProfileView
 from jdaviz.configs.specviz.plugins.viewers import Spectrum1DViewer
@@ -25,6 +25,7 @@ from jdaviz.core.unit_conversion_utils import (create_equivalent_angle_units_lis
                                                is_physical_flux_unit,
                                                is_physical_spectral_unit,
                                                is_unit_per_solid_angle,
+                                               spectral_y_conversion_error,
                                                valid_glue_display_unit)
 
 __all__ = ['UnitConversion']
@@ -80,6 +81,8 @@ class UnitConversion(PluginTemplateMixin):
 
     spectral_y_type_items = List().tag(sync=True)
     spectral_y_type_selected = Unicode().tag(sync=True)
+    spectral_y_type_error = Unicode().tag(sync=True)
+    spectral_y_type_options = List().tag(sync=True)
 
     # This shows an in-line warning message if False. This can be changed from
     # bool to unicode when we eventually handle inputing this value if it
@@ -196,6 +199,150 @@ class UnitConversion(PluginTemplateMixin):
     def spectral_y_unit(self):
         return self.sb_unit_selected if self.spectral_y_type_selected == 'Surface Brightness' else self.flux_unit_selected  # noqa
 
+    def viewer_y_type(self, viewer):
+        """The effective quantity, including for an empty or overridden viewer."""
+        if viewer.state.spectral_y_type_sync and self.spectral_y_type_selected:
+            return self.spectral_y_type_selected
+        if viewer.state.spectral_y_type:
+            return viewer.state.spectral_y_type
+        unit = viewer.state.y_display_unit
+        if unit:
+            return 'Surface Brightness' if is_unit_per_solid_angle(unit) else 'Flux'
+        return self.spectral_y_type_selected
+
+    def viewer_y_unit(self, viewer, quantity=None):
+        quantity = quantity or self.viewer_y_type(viewer)
+        target = self.sb_unit_selected if quantity == 'Surface Brightness' else self.flux_unit_selected
+        return self._resolve_sb_angle(target, viewer.state.y_display_unit)
+
+    @staticmethod
+    def _resolve_sb_angle(target, native):
+        # pix2 is the conventional default when no physical solid angle has
+        # been selected.  Preserve real solid-angle data rather than silently
+        # pretending a steradian is a pixel.  The actual viewer unit is used
+        # consistently by validation, rendering, labels and consumers.
+        if target and native:
+            from jdaviz.core.custom_units_and_equivs import PIX2
+            angle = is_unit_per_solid_angle(native, return_unit=True)
+            if (is_unit_per_solid_angle(target, return_unit=True) == PIX2
+                    and angle is not None and angle != PIX2):
+                return str(u.Unit(target) * PIX2 / angle)
+        return target
+
+    def data_y_error(self, data, viewer=None, quantity=None, target=None):
+        """Shared capability check for existing and not-yet-imported spectra."""
+        if self.config != 'deconfigged':
+            return ''
+        quantity = quantity or (self.viewer_y_type(viewer) if viewer else
+                                self.spectral_y_type_selected)
+        if target is None:
+            target = (self.sb_unit_selected if quantity == 'Surface Brightness'
+                      else self.flux_unit_selected)
+        # Before initialization, keep native quantities and allow the first
+        # spectrum to initialize the app preference as before.
+        if not quantity or not target:
+            return ''
+        if isinstance(data, GroupedSubset):
+            data = data.data
+        source = (data.flux.unit if isinstance(data, Spectrum)
+                  else data.get_component('flux').units)
+        native = (viewer.state.y_display_unit if viewer is not None
+              and viewer.state.y_display_unit else source)
+        target = self._resolve_sb_angle(target, native)
+        if is_physical_flux_unit(source) != is_physical_flux_unit(target):
+            # Separate nonphysical viewers retain their native units; global
+            # physical-unit preferences do not apply to those axes.
+            return ''
+        return spectral_y_conversion_error(data, target)
+
+    def quantity_change_error(self, viewers, quantity):
+        if quantity not in ('Flux', 'Surface Brightness'):
+            return ''
+        errors = []
+        for viewer in viewers:
+            for data in viewer.state.layers_data:
+                reason = self.data_y_error(data, viewer, quantity)
+                if reason:
+                    errors.append(f'{viewer.reference_id}: {data.label}: {reason}')
+        if errors:
+            return ('Cannot change spectral quantity. ' + '; '.join(errors)
+                    + '. Remove the incompatible layers from these viewers, or disable '
+                    'their synchronization to the app-wide setting.')
+        return ''
+
+    @validate('spectral_y_type_selected')
+    def _validate_spectral_y_type(self, proposal):
+        viewers = [v for v in self.spectrum_1d_viewers
+                   if v.state.spectral_y_type_sync]
+        error = self.quantity_change_error(viewers, proposal['value'])
+        self.spectral_y_type_error = error
+        if error:
+            raise ValueError(error)
+        return proposal['value']
+
+    def set_viewer_y_type(self, viewers, quantity=None, sync=None):
+        """Validate an entire selection before changing quantity or sync state."""
+        if quantity is not None and quantity not in ('Flux', 'Surface Brightness'):
+            raise ValueError('quantity must be Flux or Surface Brightness')
+        if sync:
+            quantity = self.spectral_y_type_selected
+        if quantity:
+            error = self.quantity_change_error(viewers, quantity)
+            if error:
+                raise ValueError(error)
+        for viewer in viewers:
+            current = self.viewer_y_type(viewer)
+            viewer.state.spectral_y_type = quantity or current
+            viewer.state.spectral_y_type_sync = (sync if sync is not None else False)
+        self._handle_spectral_y_unit()
+
+    def _refresh_y_filters(self):
+        for viewer in self.spectrum_1d_viewers:
+            viewer.data_menu._obj.dataset._update_items()
+        self._refresh_quantity_options()
+
+    def _refresh_quantity_options(self, *args):
+        synced = [v for v in self.spectrum_1d_viewers if v.state.spectral_y_type_sync]
+        self.spectral_y_type_options = [
+            {'title': quantity, 'value': quantity,
+             'props': {'disabled': bool(self.quantity_change_error(synced, quantity))}}
+            for quantity in ('Flux', 'Surface Brightness')]
+        self.spectral_y_type_error = '\n'.join(filter(None, (
+            self.quantity_change_error(synced, quantity)
+            for quantity in ('Flux', 'Surface Brightness'))))
+
+    @validate('flux_unit_selected', 'angle_unit_selected')
+    def _validate_y_unit_preference(self, proposal):
+        if self.config != 'deconfigged' or not proposal['value']:
+            return proposal['value']
+        try:
+            u.Unit(proposal['value'])
+        except ValueError:
+            # Retain UnitSelectPluginComponent's established validation and
+            # selection-reversion message for malformed unit strings.
+            return proposal['value']
+        flux = (proposal['value'] if proposal['trait'].name == 'flux_unit_selected'
+                else self.flux_unit_selected)
+        angle = (proposal['value'] if proposal['trait'].name == 'angle_unit_selected'
+                 else self.angle_unit_selected)
+        if not flux:
+            return proposal['value']
+        errors = []
+        for viewer in self.spectrum_1d_viewers:
+            quantity = self.viewer_y_type(viewer)
+            target = flux_to_sb_unit(flux, angle) if quantity == 'Surface Brightness' and angle else flux
+            # Initialization fills the two preferences separately.
+            if quantity == 'Surface Brightness' and not angle:
+                continue
+            for data in viewer.state.layers_data:
+                reason = self.data_y_error(data, viewer, quantity, target=target)
+                if reason:
+                    errors.append(f'{viewer.reference_id}: {data.label}: {reason}')
+        if errors:
+            raise ValueError('Cannot change display units. ' + '; '.join(errors)
+                             + '. Remove incompatible layers from these viewers.')
+        return proposal['value']
+
     @property
     def image_layers(self):
         return [layer
@@ -212,6 +359,7 @@ class UnitConversion(PluginTemplateMixin):
     def _on_remove_data_from_viewer(self, msg):
 
         viewer = msg.viewer
+        self._refresh_quantity_options()
 
         if self._no_data_in_relevant_viewers():
             self.disabled_msg = 'Unit Conversion unavailable without data loaded in a viewer'
@@ -601,8 +749,7 @@ class UnitConversion(PluginTemplateMixin):
         elif axis == 'flux':
             # handle spectral y-unit first since that is a more apparent change to the user
             # and feels laggy if it is done later
-            if self.spectral_y_type_selected == 'Flux':
-                self._handle_spectral_y_unit()
+            self._handle_spectral_y_unit()
             for sv in self.spectrum_1d_viewers:
                 if not (is_physical_flux_unit(self.flux_unit.selected)
                         and is_physical_flux_unit(sv.state.y_display_unit)):
@@ -629,8 +776,7 @@ class UnitConversion(PluginTemplateMixin):
         elif axis == 'sb':
             # handle spectral y-unit first since that is a more apparent change to the user
             # and feels laggy if it is done later
-            if self.spectral_y_type_selected == 'Surface Brightness':
-                self._handle_spectral_y_unit()
+            self._handle_spectral_y_unit()
 
             self._handle_attribute_display_unit(self.sb_unit_selected)
             for sv in self.spectrum_1d_viewers:
@@ -654,43 +800,34 @@ class UnitConversion(PluginTemplateMixin):
         the spectrum viewer with the new unit, and then emit a
         GlobalDisplayUnitChanged message to notify
         """
-        if self.spectral_y_type_selected:
-            yunit = valid_glue_display_unit(self.spectral_y_unit, self.spectrum_viewer, 'y')
-        elif self.sb_unit_selected:
-            yunit = valid_glue_display_unit(self.sb_unit_selected, self.spectrum_viewer, 'y')
-        else:
-            yunit = valid_glue_display_unit(self.flux_unit_selected, self.spectrum_viewer, 'y')
-
-        if not yunit:
-            return
-
-        spectral_y_change = False
         for sv in self.spectrum_1d_viewers:
+            quantity = self.viewer_y_type(sv)
+            if sv.state.spectral_y_type_sync:
+                sv.state.spectral_y_type = quantity
+            unit = self.viewer_y_unit(sv)
+            if not unit:
+                continue
             sv_yunit = sv.state.y_display_unit
             # skip only if switching between incompatible types (physical <-> non-physical)
-            if sv_yunit and is_physical_flux_unit(yunit) != is_physical_flux_unit(sv_yunit):
+            if sv_yunit and is_physical_flux_unit(unit) != is_physical_flux_unit(sv_yunit):
                 continue
-
-            if self.spectral_unit.selected != yunit:
-                spectral_y_change = True
-
-            if sv.state.y_display_unit == yunit:
-                sv.set_plot_axes()
+            if not sv.state.layers:
+                # Existing configured viewers retain their initialized units
+                # after data removal, even while the layer list is empty.
+                if self.config != 'deconfigged' and sv_yunit:
+                    sv.state.y_display_unit = unit
                 continue
             try:
+                yunit = valid_glue_display_unit(unit, sv, 'y')
                 sv.state.y_display_unit = yunit
             except ValueError:
                 # may not be data in the viewer, or unit may be incompatible
                 pass
             else:
                 sv.set_plot_axes()
-                spectral_y_change = True
-
-        if spectral_y_change:
-            # broadcast that there has been a change in the spectrum viewer y axis,
-            self.hub.broadcast(GlobalDisplayUnitChanged('spectral_y',
-                                                        yunit,
-                                                        sender=self))
+                self.hub.broadcast(GlobalDisplayUnitChanged('spectral_y', yunit,
+                                                            viewer=sv, sender=self))
+        self._refresh_y_filters()
 
     def _handle_attribute_display_unit(self, attr_unit, layers=None):
         """

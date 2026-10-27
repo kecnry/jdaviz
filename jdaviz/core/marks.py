@@ -246,6 +246,8 @@ class PluginMark:
 
     def _on_global_display_unit_changed(self, msg):
 
+        if msg.viewer is not None and msg.viewer is not self.viewer:
+            return
         if not self.auto_update_units:
             return
 

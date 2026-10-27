@@ -4,7 +4,7 @@ import re
 from astropy.table import Table, QTable, vstack
 from astropy import units as u
 from astropy.io.fits import BinTableHDU, HDUList, TableHDU
-from traitlets import Any, Bool, List, Unicode, observe
+from traitlets import Any, Bool, List, Unicode, observe, validate
 from glue.core.message import (DataCollectionAddMessage,
                                DataCollectionDeleteMessage)
 
@@ -215,6 +215,25 @@ class BaseImporterToDataCollection(BaseImporter):
     viewer_label_default = Unicode().tag(sync=True)
     viewer_label_auto = Bool(True).tag(sync=True)
     viewer_label_invalid_msg = Unicode().tag(sync=True)
+
+    # Exposed only by SpectrumImporter; ignored when routing to existing viewers.
+    spectral_y_type = Unicode('').tag(sync=True)
+
+    @validate('spectral_y_type')
+    def _validate_spectral_y_type(self, proposal):
+        if proposal['value'] not in ('', 'Flux', 'Surface Brightness'):
+            raise ValueError("spectral_y_type must be '', 'Flux', or 'Surface Brightness'")
+        return proposal['value']
+
+    def _configure_new_viewer(self, viewer):
+        """Apply a spectrum override; return whether viewer eligibility changed."""
+        from jdaviz.configs.specviz.plugins.viewers import Spectrum1DViewer
+
+        if not self.spectral_y_type or not isinstance(viewer, Spectrum1DViewer):
+            return False
+        uc = self._app.get_tray_item_from_name('g-unit-conversion')
+        uc.set_viewer_y_type([viewer], quantity=self.spectral_y_type, sync=False)
+        return True
 
     def __init__(self, app, resolver, parser, input, **kwargs):
         super().__init__(app, resolver, parser, input, **kwargs)
@@ -471,10 +490,15 @@ class BaseImporterToDataCollection(BaseImporter):
             # Create the new viewer instance
             viewer_dict = viewer_registry.members.get(viewer_reference)
             viewer_cls = viewer_dict.get('cls')
-            self._app._on_new_viewer(NewViewerMessage(viewer_cls, data=None, sender=self.app),
-                                     vid=viewer_label,
-                                     name=viewer_label,
-                                     open_data_menu_if_empty=False)
+            new_viewer = self._app._on_new_viewer(
+                NewViewerMessage(viewer_cls, data=None, sender=self.app),
+                vid=viewer_label,
+                name=viewer_label,
+                open_data_menu_if_empty=False)
+            if self._configure_new_viewer(new_viewer):
+                # ViewerAddedMessage precedes the quantity override, so its
+                # initial eligibility may reflect the app default instead.
+                viewer_select._update_items()
             viewer = self._app._jdaviz_helper.viewers.get(viewer_label)
             viewer.data_menu.add_data(data_label)
 

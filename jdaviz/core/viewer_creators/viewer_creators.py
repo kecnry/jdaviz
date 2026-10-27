@@ -115,10 +115,15 @@ class BaseViewerCreator(PluginTemplateMixin, DatasetMultiSelectMixin, ViewerSele
                                       vid=self.viewer_label_value,
                                       name=self.viewer_label_value)
 
+        self._configure_new_viewer(nv)
         dm = nv.data_menu
         for dataset in self.dataset.selected:
             dm.add_data(dataset)
         return JdavizViewerWindow(nv, app=self.app).user_api
+
+    def _configure_new_viewer(self, viewer):
+        """Configure a new, empty viewer before loading the selected datasets."""
+        pass
 
     def vue_create_clicked(self, *args):
         self.__call__()

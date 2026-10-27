@@ -70,15 +70,18 @@
         <v-divider></v-divider>
       </j-flex-row>
 
-      <plugin-select
-        :items="spectral_y_type_items.map(i => i.label)"
-        v-model:selected="spectral_y_type_selected"
-        :show_if_single_entry="true"
-        label="Spectral y-axis Type"
-        api_hint="plg.spectral_y_type ="
-        :api_hints_enabled="api_hints_enabled"
-        hint="Select the y-axis physical type for the spectrum-viewer."
+      <v-select
+        :items="spectral_y_type_options"
+        :model-value="spectral_y_type_selected"
+        @update:model-value="spectral_y_type_selected = $event"
+        label="Default and Synced Spectral y-axis Type"
+        hint="Sets the quantity for new viewers and viewers synced to the app-wide setting."
+        persistent-hint
       />
+
+      <v-alert v-if="spectral_y_type_error" type="warning">
+        {{ spectral_y_type_error }}
+      </v-alert>
 
 
       <v-alert type="warning" v-if="!pixar_sr_exists">

@@ -1199,6 +1199,18 @@ class JdavizProfileView(JdavizViewerMixin, BqplotProfileView):
         result : bool
             `True` if successful, `False` otherwise.
         """
+        # Reject expected unit incompatibility without removing source data
+        # from the application.  This guard also covers direct API additions.
+        if self.default_class == Spectrum:
+            try:
+                uc = self.jdaviz_app.get_tray_item_from_name('g-unit-conversion')
+            except KeyError:
+                uc = None
+            if uc is not None:
+                error = uc.data_y_error(data, self)
+                if error:
+                    raise ValueError(f'{data.label}: {error}')
+
         # If this is the first loaded data, set things up for unit conversion.
         if len(self.layers) == 0:
             reset_plot_axes = True

@@ -438,12 +438,51 @@ class ModelFitting(PluginTemplateMixin, DatasetSelectMixin,
             # Model fitted to spectrum, return spectrum viewer
             return [{'label': '1D Spectrum', 'reference': 'spectrum-1d-viewer'}]
 
+    @property
+    def _dataset_spectrum_viewer(self):
+        # There is no source-viewer selector: use the first spectrum viewer
+        # containing the selected dataset, not the results destination viewer.
+        return next((v for v in self.spectrum_1d_viewers
+                     if any(layer.layer.label == self.dataset_selected for layer in v.layers)),
+                    None)
+
+    def _spectrum_y_unit(self):
+        viewer = self._dataset_spectrum_viewer
+        if viewer is not None:
+            return self._app._get_display_unit('spectral_y', viewer=viewer)
+        if self.dataset.selected_obj is not None:
+            return self.dataset.selected_obj.flux.unit
+        return self._app._get_display_unit('spectral_y')
+
+    def _get_selected_spectrum(self):
+        if self.cube_fit:
+            return self.dataset.get_selected_spectrum(use_display_units=True)
+        spectrum = self.dataset.get_selected_spectrum(use_display_units=False)
+        equivalencies = all_flux_unit_conversion_equivs(
+            pixar_sr=spectrum.meta.get('_pixel_scale_factor'),
+            cube_wave=spectrum.spectral_axis)
+        y_unit = self._spectrum_y_unit()
+        if y_unit:
+            spectrum = spectrum.with_flux_unit(y_unit, equivalencies=equivalencies)
+        x_unit = self._app._get_display_unit('spectral')
+        if x_unit and (spectrum.spectral_axis.unit == u.pix) == (u.Unit(x_unit) == u.pix):
+            spectrum = spectrum.with_spectral_axis_unit(x_unit)
+        return spectrum
+
+    @observe('dataset_selected')
+    def _dataset_unit_context_changed(self, event=None):
+        if (not hasattr(self, 'dataset') or not self.dataset_selected
+                or self.cube_fit or not self._units.get('y')):
+            return
+        self._on_global_display_unit_changed(
+            GlobalDisplayUnitChanged('spectral_y', self._spectrum_y_unit(), sender=self))
+
     @observe('cube_fit')
     def _cube_fit_changed(self, event={}):
         self._update_viewer_filters(event=event)
 
         sb_unit = self._app._get_display_unit('sb')
-        spectral_y_unit = self._app._get_display_unit('spectral_y')
+        spectral_y_unit = self._spectrum_y_unit()
         if event.get('new'):
             self._units['y'] = str(sb_unit)
             self.dataset.add_filter('is_flux_cube')
@@ -550,7 +589,7 @@ class ModelFitting(PluginTemplateMixin, DatasetSelectMixin,
         # Try to run specutils fit_lines with current values to see if an error appears
         try:
             models_to_fit = self._reinitialize_with_fixed()
-            spec = self.dataset.get_selected_spectrum(use_display_units=True)
+            spec = self._get_selected_spectrum()
             masked_spectrum = self._apply_subset_masks(spec, self.spectral_subset)
             fitter = getattr(fitting, self.fitter.selected)(**init_kw)
             fit_lines(masked_spectrum, models_to_fit, fitter=fitter, weights=None,
@@ -688,7 +727,7 @@ class ModelFitting(PluginTemplateMixin, DatasetSelectMixin,
             if self.cube_fit:
                 self._units['y'] = str(self._app._get_display_unit('sb'))
             else:
-                self._units['y'] = str(self._app._get_display_unit('spectral_y'))
+                self._units['y'] = str(self._spectrum_y_unit())
 
         if model_comp == "Polynomial1D":
             # self.poly_order is the value in the widget for creating
@@ -717,10 +756,10 @@ class ModelFitting(PluginTemplateMixin, DatasetSelectMixin,
                 # with jdaviz default units (based on x/y units) but need to
                 # convert the default parameter unit to these units
                 if default_param.unit != default_units:
-                    pixar_sr = self._app.data_collection[0].meta.get('PIXAR_SR', 1)
-                    viewer = self._app.get_viewer("spectrum-viewer")
-                    # TODO: I suspect this doesn't actually work, but never gets called -Ricky
-                    cube_wave = viewer.slice_value * u.Unit(self._app._get_display_unit('spectral'))
+                    selected = self.dataset.selected_obj
+                    pixar_sr = selected.meta.get('_pixel_scale_factor',
+                                                 selected.meta.get('PIXAR_SR'))
+                    cube_wave = selected.spectral_axis[0]
                     equivs = all_flux_unit_conversion_equivs(pixar_sr, cube_wave)
 
                     initial_val = _flux_conversion_strip_spectral(
@@ -739,7 +778,7 @@ class ModelFitting(PluginTemplateMixin, DatasetSelectMixin,
             masked_spectrum = self._apply_subset_masks(data, self.spectral_subset,
                                                        spatial_axes=tuple(spatial_axes))
         else:
-            masked_spectrum = self._apply_subset_masks(self.dataset.selected_spectrum,
+            masked_spectrum = self._apply_subset_masks(self._get_selected_spectrum(),
                                                        self.spectral_subset)
 
         # subset-masked spectrum, if applicable
@@ -824,6 +863,10 @@ class ModelFitting(PluginTemplateMixin, DatasetSelectMixin,
         self._check_model_equation_invalid()
 
     def _on_global_display_unit_changed(self, msg):
+        if msg.viewer is not None:
+            viewer = self._app.get_viewer(msg.viewer) if isinstance(msg.viewer, str) else msg.viewer
+            if self.cube_fit or viewer is not self._dataset_spectrum_viewer:
+                return
         if msg.axis in ('spectral_y', 'sb', 'flux'):
             axis = 'y'
         elif msg.axis == 'spectral':
@@ -840,13 +883,7 @@ class ModelFitting(PluginTemplateMixin, DatasetSelectMixin,
                 return
             if not self.cube_fit:
                 # use spectrum viewer y axis units
-                if hasattr(uc, 'spectral_y_unit'):
-                    # NOTE, spectral_y_unit should probably be set and exposed
-                    # in the unit conversion plugin for specviz2d
-                    # and specviz so this check doesn't have to be done
-                    unit = u.Unit(uc.spectral_y_unit)
-                else:
-                    unit = u.Unit(self._app._get_display_unit('spectral_y'))
+                unit = u.Unit(self._spectrum_y_unit())
 
             else:
                 if unit != uc._obj.sb_unit_selected:
@@ -1429,7 +1466,7 @@ class ModelFitting(PluginTemplateMixin, DatasetSelectMixin,
     def _update_smoothing_factor_on_data_change(self, event={}):
         # Recompute spline smoothing factor when the input data changes
         if self.fitter_selected == 'SplineSmoothingFitter':
-            spec = self.dataset.get_selected_spectrum(use_display_units=True)
+            spec = self._get_selected_spectrum()
             y = np.asarray(getattr(spec.flux, "value", spec.flux))
             mask = self.spectral_subset.selected_subset_mask
             finite = np.isfinite(y) & ~mask
@@ -1518,7 +1555,7 @@ class ModelFitting(PluginTemplateMixin, DatasetSelectMixin,
             return
         models_to_fit = self._reinitialize_with_fixed()
 
-        spec = self.dataset.get_selected_spectrum(use_display_units=True)
+        spec = self._get_selected_spectrum()
 
         # Pass selected viewer to load explicitly so we don't get a warning
         load_kwargs = {}
@@ -1540,7 +1577,7 @@ class ModelFitting(PluginTemplateMixin, DatasetSelectMixin,
             smoother = fitting.SplineSmoothingFitter()
 
             mspec = masked_spectrum
-            spec = self.dataset.get_selected_spectrum(use_display_units=True)
+            spec = self._get_selected_spectrum()
 
             x_full = spec.spectral_axis
             y_full = mspec.flux
